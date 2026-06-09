@@ -6,6 +6,8 @@ import JobSeekerDashboard from './pages/JobSeekerDashboard'
 import RecruiterDashboard from './pages/RecruiterDashboard'
 import ProfileBuilder from './pages/ProfileBuilder'
 import RankCandidates from './pages/RankCandidates'
+import SkillExam from './pages/SkillExam'
+import BrowseJobs from './pages/BrowseJobs'
 
 function App() {
   return (
@@ -16,6 +18,8 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/jobseeker/dashboard" element={<JobSeekerDashboard />} />
         <Route path="/jobseeker/profile" element={<ProfileBuilder />} />
+        <Route path="/jobseeker/exam" element={<SkillExam />} />
+        <Route path="/jobseeker/jobs" element={<BrowseJobs />} />
         <Route path="/recruiter/dashboard" element={<RecruiterDashboard />} />
         <Route path="/recruiter/rank" element={<RankCandidates />} />
       </Routes>
