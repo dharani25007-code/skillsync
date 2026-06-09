@@ -1,16 +1,31 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import axios from 'axios'
+
+const API = 'http://127.0.0.1:8000'
 
 export default function RecruiterDashboard() {
   const navigate = useNavigate()
   const name = localStorage.getItem('name') || 'Recruiter'
   const [dark, setDark] = useState(true)
+  const [history, setHistory] = useState([])
 
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (!token) navigate('/login')
     document.documentElement.classList.toggle('dark', dark)
+    loadHistory()
   }, [dark])
+
+  const loadHistory = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const res = await axios.get(`${API}/ranking/history`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setHistory(res.data || [])
+    } catch (err) { }
+  }
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950 transition-all duration-300">
@@ -35,6 +50,7 @@ export default function RecruiterDashboard() {
       </nav>
 
       <div className="max-w-5xl mx-auto px-6 py-10">
+
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
           Welcome, {name}! 🏢
         </h1>
@@ -45,9 +61,9 @@ export default function RecruiterDashboard() {
         {/* Stats */}
         <div className="grid grid-cols-3 gap-6 mb-10">
           {[
-            { number: '0', label: 'Active Jobs', icon: '💼' },
-            { number: '0', label: 'Candidates Ranked', icon: '👥' },
-            { number: '0', label: 'Shortlisted', icon: '⭐' },
+            { number: history.length, label: 'Ranking Sessions', icon: '📊' },
+            { number: history.reduce((acc, h) => acc + (h.results?.length || 0), 0), label: 'Candidates Ranked', icon: '👥' },
+            { number: '100K+', label: 'Dataset Size', icon: '🗄️' },
           ].map((s, i) => (
             <div key={i} className="bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 text-center">
               <div className="text-3xl mb-2">{s.icon}</div>
@@ -58,28 +74,82 @@ export default function RecruiterDashboard() {
         </div>
 
         {/* Actions */}
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-2 gap-6 mb-10">
           {[
-            { icon: '🎯', title: 'Find Candidates with AI', desc: 'Post a job description and let our AI rank the best candidates instantly', action: 'Start Ranking', color: 'teal', link: '/recruiter/rank' },
-            { icon: '📊', title: 'Upload Your Dataset', desc: 'Already have a candidate dataset? Upload CSV and rank them with AI', action: 'Upload Dataset', color: 'teal', link: '/recruiter/rank' },
-            { icon: '📋', title: 'My Job Posts', desc: 'View and manage all your active job postings', action: 'Coming Soon', color: 'gray', link: null },
-            { icon: '🏆', title: 'Shortlisted Candidates', desc: 'View candidates you have shortlisted from previous rankings', action: 'Coming Soon', color: 'gray', link: null },
+            {
+              icon: '🎯',
+              title: 'Rank Candidates with AI',
+              desc: 'Post a job description and let our AI rank the best candidates instantly from 100K+ profiles',
+              action: 'Start Ranking',
+              color: 'teal',
+              link: '/recruiter/rank'
+            },
+            {
+              icon: '📊',
+              title: 'Use INDIA RUNS Dataset',
+              desc: 'Rank candidates from the official 100K Redrob hackathon dataset',
+              action: 'Use Dataset',
+              color: 'teal',
+              link: '/recruiter/rank'
+            },
+            {
+              icon: '📁',
+              title: 'Upload Your Own Dataset',
+              desc: 'Upload your own CSV candidate dataset and rank with AI',
+              action: 'Upload CSV',
+              color: 'teal',
+              link: '/recruiter/rank'
+            },
+            {
+              icon: '✅',
+              title: 'SkillSync Verified Talent',
+              desc: 'Access candidates who have taken AI skill exams and have verified scores',
+              action: 'View Verified',
+              color: 'teal',
+              link: '/recruiter/rank'
+            },
           ].map((card, i) => (
-            <div key={i} className="bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 hover:border-teal-500 transition-all">
+            <div key={i}
+              className="bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 hover:border-teal-500 transition-all">
               <div className="text-3xl mb-3">{card.icon}</div>
               <h3 className="font-bold text-gray-900 dark:text-white mb-2">{card.title}</h3>
               <p className="text-gray-500 dark:text-gray-400 text-sm mb-4">{card.desc}</p>
               <button
                 onClick={() => card.link && navigate(card.link)}
-                className={`text-sm font-medium px-4 py-2 rounded-lg transition-all ${card.color === 'teal' ? 'bg-teal-500 text-white hover:bg-teal-600 cursor-pointer' : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'}`}>
+                className="text-sm font-medium px-4 py-2 rounded-lg bg-teal-500 text-white hover:bg-teal-600 cursor-pointer transition-all">
                 {card.action}
               </button>
             </div>
           ))}
         </div>
 
+        {/* Recent Rankings */}
+        {history.length > 0 && (
+          <div className="bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 mb-6">
+            <h3 className="font-bold text-gray-900 dark:text-white mb-4">📋 Recent Ranking Sessions</h3>
+            <div className="space-y-3">
+              {history.slice(0, 5).map((h, i) => (
+                <div key={i}
+                  className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      {h.jd_text?.slice(0, 60)}...
+                    </p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {h.dataset_source} • {h.results?.length} candidates ranked
+                    </p>
+                  </div>
+                  <span className="text-xs text-teal-500 font-medium">
+                    {new Date(h.created_at).toLocaleDateString()}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <button onClick={() => { localStorage.clear(); navigate('/') }}
-          className="mt-10 text-gray-400 hover:text-red-500 text-sm transition-all">
+          className="text-gray-400 hover:text-red-500 text-sm transition-all">
           → Logout
         </button>
       </div>
