@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
+import { useNavigate } from 'react-router-dom'
+
+const API = 'http://127.0.0.1:8000'
 
 export default function RankCandidates() {
   const navigate = useNavigate()
@@ -11,6 +13,9 @@ export default function RankCandidates() {
   const [file, setFile] = useState(null)
   const [loading, setLoading] = useState(false)
   const [results, setResults] = useState([])
+  const [totalRanked, setTotalRanked] = useState(0)
+  const [jdRequirements, setJdRequirements] = useState(null)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -19,19 +24,44 @@ export default function RankCandidates() {
   }, [dark])
 
   const handleRank = async () => {
-    if (!jd.trim()) return alert('Please enter a job description!')
+    if (!jd.trim()) return
     setLoading(true)
+    setError('')
     setStep(3)
-    setTimeout(() => {
-      setResults([
-        { rank: 1, name: 'Ravi Kumar', score: 94, skills: ['Python', 'ML', 'Flask'], experience: '3 years', match: 'Strong match — all required skills verified' },
-        { rank: 2, name: 'Priya S', score: 87, skills: ['Python', 'ML', 'Django'], experience: '2 years', match: 'Good match — most skills verified' },
-        { rank: 3, name: 'Arjun M', score: 76, skills: ['Python', 'Flask'], experience: '1 year', match: 'Partial match — some skills missing' },
-        { rank: 4, name: 'Sneha R', score: 68, skills: ['Python', 'SQL'], experience: '2 years', match: 'Moderate match — different specialization' },
-        { rank: 5, name: 'Karthik L', score: 61, skills: ['Java', 'Spring'], experience: '3 years', match: 'Weak match — different tech stack' },
-      ])
-      setLoading(false)
-    }, 3000)
+
+    try {
+      const token = localStorage.getItem('token')
+      const source = datasetOption === 'upload' ? 'skillsync' : datasetOption
+      const res = await axios.post(`${API}/ranking/rank`, {
+        jd_text: jd,
+        dataset_source: source,
+        top_n: 20
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      setResults(res.data.results || [])
+      setTotalRanked(res.data.total_ranked || 0)
+      setJdRequirements(res.data.jd_requirements)
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Ranking failed. Please try again.')
+      setStep(2)
+    }
+    setLoading(false)
+  }
+
+  const downloadCSV = () => {
+    const headers = ['rank', 'candidate_id', 'name', 'title', 'score', 'reasoning']
+    const rows = results.map(r => [
+      r.rank, r.candidate_id, r.name || '', r.current_title || '', r.score, r.reasoning
+    ])
+    const csv = [headers, ...rows].map(r => r.join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'skillsync_ranked_candidates.csv'
+    a.click()
   }
 
   return (
@@ -63,15 +93,34 @@ export default function RankCandidates() {
         {step === 1 && (
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">AI Candidate Ranking</h1>
-            <p className="text-gray-500 dark:text-gray-400 mb-8">Paste your job description and let AI find the best candidates</p>
+            <p className="text-gray-500 dark:text-gray-400 mb-8">
+              Paste your job description and let AI find the best candidates
+            </p>
 
             <div className="bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 mb-6">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">Job Description</label>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
+                Job Description *
+              </label>
               <textarea
-                placeholder="e.g. We are looking for a Python Developer with 2+ years of experience in Machine Learning, Flask, and REST APIs. The candidate should have strong knowledge of scikit-learn and pandas..."
-                value={jd} rows={8}
+                placeholder="e.g. We are looking for a Senior ML Engineer with 5+ years of experience in Python, machine learning, NLP, embeddings, and vector databases. The candidate should have experience building production-grade AI systems..."
+                value={jd} rows={10}
                 onChange={e => setJd(e.target.value)}
                 className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white px-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-teal-500 transition-all resize-none text-sm" />
+
+              <div className="mt-3 flex gap-2 flex-wrap">
+                <span className="text-xs text-gray-400">Quick fill:</span>
+                {[
+                  'Python Developer with ML experience',
+                  'Full Stack React + Node.js Developer',
+                  'Data Scientist with NLP expertise',
+                  'Senior AI Engineer with LLM experience'
+                ].map(t => (
+                  <button key={t} onClick={() => setJd(`We are looking for a ${t}. Required skills include relevant technologies and 3+ years of experience.`)}
+                    className="text-xs bg-gray-100 dark:bg-gray-800 hover:bg-teal-50 dark:hover:bg-teal-900/20 text-gray-600 dark:text-gray-400 hover:text-teal-500 px-2 py-1 rounded-lg transition-all">
+                    {t}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <button onClick={() => setStep(2)} disabled={!jd.trim()}
@@ -87,29 +136,55 @@ export default function RankCandidates() {
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Choose Candidate Dataset</h1>
             <p className="text-gray-500 dark:text-gray-400 mb-8">Where should we find candidates to rank?</p>
 
-            <div className="grid grid-cols-2 gap-4 mb-8">
-              <button
-                onClick={() => setDatasetOption('live')}
-                className={`border-2 rounded-2xl p-6 text-left transition-all ${datasetOption === 'live' ? 'border-teal-500 bg-teal-50 dark:bg-teal-900/20' : 'border-gray-200 dark:border-gray-700 hover:border-teal-500'}`}>
-                <div className="text-3xl mb-3">👥</div>
-                <div className="font-bold text-gray-900 dark:text-white mb-1">Live SkillSync Database</div>
-                <div className="text-sm text-gray-500 dark:text-gray-400">Use verified candidates already registered on SkillSync</div>
-              </button>
-              <button
-                onClick={() => setDatasetOption('upload')}
-                className={`border-2 rounded-2xl p-6 text-left transition-all ${datasetOption === 'upload' ? 'border-teal-500 bg-teal-50 dark:bg-teal-900/20' : 'border-gray-200 dark:border-gray-700 hover:border-teal-500'}`}>
-                <div className="text-3xl mb-3">📁</div>
-                <div className="font-bold text-gray-900 dark:text-white mb-1">Upload Your CSV</div>
-                <div className="text-sm text-gray-500 dark:text-gray-400">Upload your own candidate dataset in CSV format</div>
-              </button>
+            {error && (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl mb-6">
+                ⚠️ {error}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 gap-4 mb-8">
+              {[
+                {
+                  id: 'skillsync',
+                  icon: '👥',
+                  title: 'SkillSync Live Database',
+                  desc: 'Use verified candidates who registered on SkillSync — with AI exam scores',
+                  badge: '✅ Verified Skills'
+                },
+                {
+                  id: 'hackathon',
+                  icon: '📊',
+                  title: 'INDIA RUNS Dataset',
+                  desc: 'Use the 100K candidate dataset provided by Redrob for the hackathon',
+                  badge: '100K Candidates'
+                },
+                {
+                  id: 'upload',
+                  icon: '📁',
+                  title: 'Upload Your Own CSV',
+                  desc: 'Upload your own candidate dataset in CSV format',
+                  badge: 'Custom Data'
+                },
+              ].map(opt => (
+                <button key={opt.id} onClick={() => setDatasetOption(opt.id)}
+                  className={`border-2 rounded-2xl p-5 text-left transition-all ${datasetOption === opt.id ? 'border-teal-500 bg-teal-50 dark:bg-teal-900/20' : 'border-gray-200 dark:border-gray-700 hover:border-teal-300'}`}>
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="text-2xl">{opt.icon}</span>
+                    <div>
+                      <div className="font-bold text-gray-900 dark:text-white">{opt.title}</div>
+                      <span className="text-xs bg-teal-100 dark:bg-teal-900/40 text-teal-600 dark:text-teal-400 px-2 py-0.5 rounded-full">{opt.badge}</span>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 ml-9">{opt.desc}</p>
+                </button>
+              ))}
             </div>
 
             {datasetOption === 'upload' && (
               <div className="bg-gray-50 dark:bg-gray-900 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl p-8 text-center mb-6">
                 <div className="text-4xl mb-3">📤</div>
                 <p className="text-gray-500 dark:text-gray-400 mb-4">Upload your candidates CSV file</p>
-                <input type="file" accept=".csv"
-                  onChange={e => setFile(e.target.files[0])}
+                <input type="file" accept=".csv" onChange={e => setFile(e.target.files[0])}
                   className="hidden" id="csvUpload" />
                 <label htmlFor="csvUpload"
                   className="bg-teal-500 hover:bg-teal-600 text-white px-6 py-2 rounded-lg font-medium cursor-pointer transition-all">
@@ -120,7 +195,7 @@ export default function RankCandidates() {
             )}
 
             <div className="flex gap-4">
-              <button onClick={() => setStep(1)}
+              <button onClick={() => { setStep(1); setError('') }}
                 className="px-6 py-3 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-teal-500 hover:text-teal-500 rounded-xl font-medium transition-all">
                 ← Back
               </button>
@@ -137,63 +212,105 @@ export default function RankCandidates() {
         {step === 3 && (
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">AI Ranking Results</h1>
-            <p className="text-gray-500 dark:text-gray-400 mb-8">Candidates ranked by AI based on your job description</p>
+            <p className="text-gray-500 dark:text-gray-400 mb-8">
+              Candidates ranked by AI based on your job description
+            </p>
 
             {loading ? (
               <div className="text-center py-20">
                 <div className="text-5xl mb-4 animate-pulse">🧠</div>
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">AI is analyzing candidates...</h2>
-                <p className="text-gray-500 dark:text-gray-400">Reading JD → Matching profiles → Calculating scores</p>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                  AI is analyzing candidates...
+                </h2>
+                <p className="text-gray-500 dark:text-gray-400">
+                  Reading JD → Matching profiles → Calculating scores
+                </p>
               </div>
             ) : (
               <div>
-                {/* Download Button */}
+                {/* Stats */}
+                {jdRequirements && (
+                  <div className="bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 mb-6">
+                    <h3 className="font-semibold text-gray-900 dark:text-white mb-2 text-sm">📋 JD Analysis</h3>
+                    <div className="flex flex-wrap gap-2">
+                      <span className="text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-2 py-1 rounded-full">
+                        Exp: {jdRequirements.min_exp}-{jdRequirements.max_exp} years
+                      </span>
+                      {jdRequirements.required_skills?.slice(0, 6).map(s => (
+                        <span key={s} className="text-xs bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 px-2 py-1 rounded-full capitalize">{s}</span>
+                      ))}
+                    </div>
+                    <p className="text-xs text-gray-400 mt-2">Ranked {totalRanked.toLocaleString()} candidates</p>
+                  </div>
+                )}
+
+                {/* Download */}
                 <div className="flex justify-end mb-4">
-                  <button className="bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg text-sm font-medium transition-all">
+                  <button onClick={downloadCSV}
+                    className="bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg text-sm font-medium transition-all">
                     📥 Download CSV
                   </button>
                 </div>
 
-                {/* Results Table */}
+                {/* Results */}
                 <div className="space-y-4">
                   {results.map((r, i) => (
-                    <div key={i} className={`bg-gray-50 dark:bg-gray-900 border rounded-2xl p-6 transition-all hover:border-teal-500 ${i === 0 ? 'border-teal-500 bg-teal-50 dark:bg-teal-900/10' : 'border-gray-100 dark:border-gray-800'}`}>
+                    <div key={i}
+                      className={`bg-gray-50 dark:bg-gray-900 border rounded-2xl p-6 transition-all hover:border-teal-500 ${i === 0 ? 'border-teal-500 bg-teal-50 dark:bg-teal-900/10' : 'border-gray-100 dark:border-gray-800'}`}>
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white ${i === 0 ? 'bg-teal-500' : i === 1 ? 'bg-blue-500' : i === 2 ? 'bg-purple-500' : 'bg-gray-400'}`}>
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-sm ${i === 0 ? 'bg-teal-500' : i === 1 ? 'bg-blue-500' : i === 2 ? 'bg-purple-500' : 'bg-gray-400'}`}>
                             #{r.rank}
                           </div>
                           <div>
-                            <h3 className="font-bold text-gray-900 dark:text-white">{r.name}</h3>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">{r.experience}</p>
+                            <h3 className="font-bold text-gray-900 dark:text-white">
+                              {r.name || r.candidate_id}
+                            </h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                              {r.current_title || 'Professional'} • {r.location || 'Location N/A'}
+                            </p>
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className={`text-2xl font-bold ${r.score >= 90 ? 'text-teal-500' : r.score >= 75 ? 'text-blue-500' : r.score >= 60 ? 'text-yellow-500' : 'text-red-400'}`}>
-                            {r.score}%
+                          <div className={`text-2xl font-bold ${r.score >= 0.8 ? 'text-teal-500' : r.score >= 0.6 ? 'text-blue-500' : r.score >= 0.4 ? 'text-yellow-500' : 'text-red-400'}`}>
+                            {Math.round(r.score * 100)}%
                           </div>
                           <div className="text-xs text-gray-400">Match Score</div>
                         </div>
                       </div>
 
-                      <div className="flex flex-wrap gap-2 mb-3">
-                        {r.skills.map((s, j) => (
-                          <span key={j} className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 px-2 py-1 rounded-full text-xs font-medium">
-                            {s}
-                          </span>
-                        ))}
-                      </div>
+                      {/* Skills */}
+                      {r.skills && r.skills.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          {r.skills.slice(0, 5).map((s, j) => (
+                            <span key={j}
+                              className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 px-2 py-1 rounded-full text-xs font-medium">
+                              {typeof s === 'object' ? s.name : s}
+                            </span>
+                          ))}
+                        </div>
+                      )}
 
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">💡 {r.match}</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+                        💡 {r.reasoning}
+                      </p>
 
                       {/* Score Bar */}
                       <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
-                        <div className={`h-1.5 rounded-full transition-all ${r.score >= 90 ? 'bg-teal-500' : r.score >= 75 ? 'bg-blue-500' : r.score >= 60 ? 'bg-yellow-500' : 'bg-red-400'}`}
-                          style={{width: `${r.score}%`}}>
+                        <div
+                          className={`h-1.5 rounded-full transition-all ${r.score >= 0.8 ? 'bg-teal-500' : r.score >= 0.6 ? 'bg-blue-500' : r.score >= 0.4 ? 'bg-yellow-500' : 'bg-red-400'}`}
+                          style={{ width: `${r.score * 100}%` }}>
                         </div>
                       </div>
                     </div>
                   ))}
+
+                  {results.length === 0 && !loading && (
+                    <div className="text-center py-12 text-gray-400">
+                      <div className="text-4xl mb-3">🔍</div>
+                      <p>No candidates found. Try a different dataset or JD.</p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex gap-4 mt-8">
@@ -203,7 +320,7 @@ export default function RankCandidates() {
                   </button>
                   <button onClick={() => navigate('/recruiter/dashboard')}
                     className="flex-1 bg-teal-500 hover:bg-teal-600 text-white py-3 rounded-xl font-semibold transition-all">
-                    ← Back to Dashboard
+                    ← Dashboard
                   </button>
                 </div>
               </div>
