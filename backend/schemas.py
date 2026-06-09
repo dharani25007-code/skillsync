@@ -1,10 +1,12 @@
-from pydantic import BaseModel, EmailStr
-from typing import Optional, List
+from pydantic import BaseModel
+from typing import Optional
 from enum import Enum
+
 
 class UserRole(str, Enum):
     jobseeker = "jobseeker"
     recruiter = "recruiter"
+
 
 class UserRegister(BaseModel):
     name: str
@@ -12,9 +14,11 @@ class UserRegister(BaseModel):
     password: str
     role: UserRole
 
+
 class UserLogin(BaseModel):
     email: str
     password: str
+
 
 class TokenResponse(BaseModel):
     access_token: str
