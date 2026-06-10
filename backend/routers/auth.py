@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
-from models import User
+from models import User, JobSeekerProfile, RecruiterProfile
 from schemas import UserRegister, UserLogin, TokenResponse
 from passlib.context import CryptContext
 from jose import jwt
@@ -44,6 +44,25 @@ def register(user: UserRegister, db: Session = Depends(get_db)):
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+    
+    # Auto-initialize empty profiles
+    if new_user.role == "jobseeker":
+        profile = JobSeekerProfile(
+            user_id=new_user.id,
+            skills=[],
+            experience=[],
+            education=[],
+            certifications=[],
+            languages=[],
+            projects=[]
+        )
+        db.add(profile)
+        db.commit()
+    elif new_user.role == "recruiter":
+        profile = RecruiterProfile(user_id=new_user.id)
+        db.add(profile)
+        db.commit()
+
     token = create_token({"sub": str(new_user.id), "role": new_user.role})
     return TokenResponse(access_token=token, token_type="bearer",
                         role=new_user.role, name=new_user.name, user_id=new_user.id)
