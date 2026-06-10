@@ -10,12 +10,21 @@ export default function JobSeekerDashboard() {
   const [dark, setDark] = useState(true)
   const [profile, setProfile] = useState(null)
   const [completeness, setCompleteness] = useState(20)
+  const [applications, setApplications] = useState([])
+  const [loadingApps, setLoadingApps] = useState(true)
+  const [exams, setExams] = useState([])
+  const [loadingExams, setLoadingExams] = useState(true)
+  const [selectedApp, setSelectedApp] = useState(null)
+  const [showQueryModal, setShowQueryModal] = useState(false)
+  const [newQueryMsg, setNewQueryMsg] = useState('')
 
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (!token) { navigate('/login'); return }
     document.documentElement.classList.toggle('dark', dark)
     loadProfile()
+    loadApplications()
+    loadExamHistory()
   }, [dark])
 
   const loadProfile = async () => {
@@ -34,6 +43,30 @@ export default function JobSeekerDashboard() {
         navigate('/login')
       }
     }
+  }
+
+  const loadApplications = async () => {
+    setLoadingApps(true)
+    try {
+      const token = localStorage.getItem('token')
+      const res = await axios.get(`${API}/jobs/my-applications`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setApplications(res.data || [])
+    } catch (err) {}
+    setLoadingApps(false)
+  }
+
+  const loadExamHistory = async () => {
+    setLoadingExams(true)
+    try {
+      const token = localStorage.getItem('token')
+      const res = await axios.get(`${API}/exam/history`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setExams(res.data || [])
+    } catch (err) {}
+    setLoadingExams(false)
   }
 
   const examScores = profile?.skill_assessment_scores || {}
@@ -164,6 +197,44 @@ export default function JobSeekerDashboard() {
           </div>
         )}
 
+        {/* Your Exam History */}
+        <div className="bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 mb-6">
+          <h3 className="font-bold text-gray-900 dark:text-white mb-4">🧠 Your Exam Attempts</h3>
+          {loadingExams ? (
+            <p className="text-xs text-gray-400">Loading your exam history...</p>
+          ) : exams.length === 0 ? (
+            <p className="text-sm text-gray-500 dark:text-gray-400">You haven't taken any skill exams yet.</p>
+          ) : (
+            <div className="space-y-4">
+              {exams.map((attempt) => (
+                <div key={attempt.id}
+                  className="p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-teal-500/50 transition-all">
+                  <div className="flex items-start justify-between flex-wrap gap-2">
+                    <div>
+                      <h4 className="text-sm font-bold text-gray-900 dark:text-white">{attempt.skill_name}</h4>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Score: <span className="font-semibold text-teal-500">{attempt.score}%</span> ({attempt.correct_answers}/{attempt.total_questions} correct)
+                      </p>
+                      <p className="text-[10px] text-gray-400 mt-1.5">
+                        Taken on {new Date(attempt.created_at).toLocaleDateString()} at {new Date(attempt.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-semibold px-3 py-1 rounded-full ${
+                        attempt.passed
+                          ? 'bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 border border-teal-200 dark:border-teal-800'
+                          : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800'
+                      }`}>
+                        {attempt.passed ? '✅ Passed (Badge Added)' : '❌ Failed (< 60%)'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Profile Summary */}
         {profile && profile.current_title && (
           <div className="bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 mb-6">
@@ -192,11 +263,148 @@ export default function JobSeekerDashboard() {
           </div>
         )}
 
+        {/* Your Applications */}
+        <div className="bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 mb-6">
+          <h3 className="font-bold text-gray-900 dark:text-white mb-4">📝 Your Job Applications</h3>
+          {loadingApps ? (
+            <p className="text-xs text-gray-400">Loading your applications...</p>
+          ) : applications.length === 0 ? (
+            <p className="text-sm text-gray-500 dark:text-gray-400">You haven't applied to any jobs yet.</p>
+          ) : (
+            <div className="space-y-4">
+              {applications.map((app) => (
+                <div key={app.application_id}
+                  className="p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-teal-500/50 transition-all">
+                  <div className="flex items-start justify-between flex-wrap gap-2">
+                    <div>
+                      <h4 className="text-sm font-bold text-gray-900 dark:text-white">{app.title}</h4>
+                      <p className="text-xs text-teal-500 font-semibold mt-0.5">{app.company}</p>
+                      <p className="text-[10px] text-gray-405 dark:text-gray-400 mt-1.5">
+                        Applied on {new Date(app.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          setSelectedApp(app)
+                          setShowQueryModal(true)
+                          setNewQueryMsg('')
+                        }}
+                        className="text-xs font-semibold bg-teal-50 dark:bg-teal-900/20 text-teal-650 dark:text-teal-400 px-3 py-1.5 rounded-lg border border-teal-200 dark:border-teal-850 hover:bg-teal-500 hover:text-white transition-all cursor-pointer">
+                        Rise Query ({app.queries?.length || 0})
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         <button onClick={() => { localStorage.clear(); navigate('/') }}
-          className="text-gray-400 hover:text-red-500 text-sm transition-all">
+          className="text-gray-400 hover:text-red-500 text-sm transition-all mb-10">
           → Logout
         </button>
       </div>
+
+      {/* Rise Query / Chat Modal */}
+      {showQueryModal && selectedApp && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-lg w-full p-6 relative max-h-[85vh] flex flex-col border border-gray-150 dark:border-gray-800 shadow-2xl">
+            <button
+              onClick={() => {
+                setShowQueryModal(false)
+                setSelectedApp(null)
+              }}
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-800 dark:hover:text-white text-lg font-bold"
+            >
+              ✕
+            </button>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-1">Queries & Messages</h2>
+            <p className="text-teal-500 text-sm font-semibold mb-4">Job: {selectedApp.title}</p>
+            
+            {/* Chat Thread */}
+            <div className="flex-1 overflow-y-auto space-y-3 bg-gray-50 dark:bg-gray-950 p-4 rounded-xl border border-gray-100 dark:border-gray-800 min-h-[200px] max-h-[40vh] mb-4">
+              {(selectedApp.queries && selectedApp.queries.length > 0) ? (
+                selectedApp.queries.map((q, idx) => (
+                  <div key={idx} className={`flex flex-col ${q.sender === 'seeker' ? 'items-end' : 'items-start'}`}>
+                    <div className={`max-w-[80%] rounded-xl p-3 text-xs ${q.sender === 'seeker' ? 'bg-teal-500 text-white rounded-tr-none' : 'bg-gray-100 dark:bg-gray-850 text-gray-805 dark:text-gray-200 rounded-tl-none border border-gray-200 dark:border-gray-800'}`}>
+                      <span className="font-bold text-[9px] block mb-0.5 opacity-80">{q.sender === 'seeker' ? 'You' : 'Recruiter'}</span>
+                      <p className="leading-relaxed">{q.message}</p>
+                      <span className="text-[8px] opacity-70 block mt-1 text-right">
+                        {new Date(q.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-10">
+                  <span className="text-2xl block mb-2">💬</span>
+                  <p className="text-xs text-gray-400 italic">No queries raised yet. Type a query below to ask the recruiter anything about this application!</p>
+                </div>
+              )}
+            </div>
+            
+            {/* Input Form */}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newQueryMsg}
+                onChange={(e) => setNewQueryMsg(e.target.value)}
+                onKeyDown={async (e) => {
+                  if (e.key === 'Enter' && newQueryMsg.trim()) {
+                    const msg = newQueryMsg.trim();
+                    setNewQueryMsg('');
+                    try {
+                      const token = localStorage.getItem('token')
+                      const res = await axios.post(`${API}/jobs/applications/${selectedApp.application_id}/query`, {
+                        message: msg
+                      }, {
+                        headers: { Authorization: `Bearer ${token}` }
+                      })
+                      
+                      const updatedQueries = res.data.queries
+                      setSelectedApp({ ...selectedApp, queries: updatedQueries })
+                      setApplications(prevApps => prevApps.map(a => 
+                        a.application_id === selectedApp.application_id ? { ...a, queries: updatedQueries } : a
+                      ))
+                    } catch (err) {
+                      alert('Failed to send query')
+                    }
+                  }
+                }}
+                placeholder="Ask about updates, change resume details, etc..."
+                className="flex-1 border border-gray-200 dark:border-gray-750 rounded-xl px-4 py-2 bg-transparent text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-teal-500"
+              />
+              <button
+                onClick={async () => {
+                  if (!newQueryMsg.trim()) return
+                  try {
+                    const token = localStorage.getItem('token')
+                    const res = await axios.post(`${API}/jobs/applications/${selectedApp.application_id}/query`, {
+                      message: newQueryMsg
+                    }, {
+                      headers: { Authorization: `Bearer ${token}` }
+                    })
+                    
+                    const updatedQueries = res.data.queries
+                    setSelectedApp({ ...selectedApp, queries: updatedQueries })
+                    setApplications(prevApps => prevApps.map(a => 
+                      a.application_id === selectedApp.application_id ? { ...a, queries: updatedQueries } : a
+                    ))
+                    setNewQueryMsg('')
+                  } catch (err) {
+                    alert('Failed to send query')
+                  }
+                }}
+                className="bg-teal-500 hover:bg-teal-600 text-white font-bold px-5 py-2 rounded-xl transition-all cursor-pointer shadow-lg shadow-teal-500/20"
+              >
+                Send
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
