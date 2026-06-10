@@ -12,6 +12,55 @@ export default function BrowseJobs() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
   const [error, setError] = useState('')
+  const [selectedJob, setSelectedJob] = useState(null)
+  const [coverLetter, setCoverLetter] = useState('')
+  const [uploadFile, setUploadFile] = useState(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [successMsg, setSuccessMsg] = useState('')
+  const [applyError, setApplyError] = useState('')
+
+  const handleApplySubmit = async (e) => {
+    e.preventDefault()
+    if (!uploadFile) {
+      setApplyError('Please upload a resume or document.')
+      return
+    }
+    setSubmitting(true)
+    setApplyError('')
+    setSuccessMsg('')
+    try {
+      const token = localStorage.getItem('token')
+      const formData = new FormData()
+      formData.append('file', uploadFile)
+      if (coverLetter) {
+        formData.append('cover_letter', coverLetter)
+      }
+
+      await axios.post(`${API}/jobs/apply/${selectedJob.id}`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+      })
+
+      setSuccessMsg('Your application has been submitted successfully!')
+      setCoverLetter('')
+      setUploadFile(null)
+      
+      // Update local state to reflect that the user applied to this job
+      setJobs(prevJobs => prevJobs.map(j => 
+        j.id === selectedJob.id ? { ...j, applied: true } : j
+      ))
+
+      setTimeout(() => {
+        setSelectedJob(null)
+        setSuccessMsg('')
+      }, 2000)
+    } catch (err) {
+      setApplyError(err.response?.data?.detail || 'Failed to submit application. Please try again.')
+    }
+    setSubmitting(false)
+  }
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -197,11 +246,27 @@ export default function BrowseJobs() {
                     </span>
                     <span>🕒 {job.posted_days_ago}d ago</span>
                   </div>
-                  <button
-                    onClick={() => window.open('https://redrob.io', '_blank')}
-                    className="bg-teal-500 hover:bg-teal-600 text-white px-5 py-2 rounded-lg text-sm font-semibold transition-all">
-                    Apply Now →
-                  </button>
+                  {job.applied ? (
+                    <button
+                      disabled
+                      className="bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-5 py-2 rounded-lg text-sm font-bold cursor-default"
+                    >
+                      ✓ Applied
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setSelectedJob(job)
+                        setCoverLetter('')
+                        setUploadFile(null)
+                        setSuccessMsg('')
+                        setApplyError('')
+                      }}
+                      className="bg-teal-500 hover:bg-teal-600 text-white px-5 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer"
+                    >
+                      Apply Now →
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
@@ -217,6 +282,116 @@ export default function BrowseJobs() {
           </div>
         )}
       </div>
+
+      {/* Apply Job Modal */}
+      {selectedJob && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-xl w-full p-6 relative max-h-[90vh] overflow-y-auto border border-gray-100 dark:border-gray-800 shadow-2xl">
+            <button
+              onClick={() => setSelectedJob(null)}
+              className="absolute top-4 right-4 text-gray-450 hover:text-gray-800 dark:hover:text-white text-lg font-bold"
+            >
+              ✕
+            </button>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Apply for {selectedJob.title}</h2>
+            <p className="text-teal-500 font-semibold mb-4">{selectedJob.company || 'Recruiter Company'}</p>
+
+            <div className="space-y-4 mb-6 bg-gray-50 dark:bg-gray-800/40 p-4 rounded-xl text-sm border border-gray-100 dark:border-gray-800">
+              <div>
+                <span className="text-gray-405 font-medium block">Job Description</span>
+                <p className="text-gray-700 dark:text-gray-300 mt-1 leading-relaxed">{selectedJob.description}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="text-gray-405 font-medium block">Location</span>
+                  <span className="text-gray-705 dark:text-gray-300">{selectedJob.location}</span>
+                </div>
+                <div>
+                  <span className="text-gray-405 font-medium block">Experience Required</span>
+                  <span className="text-gray-705 dark:text-gray-300">{selectedJob.experience_min}-{selectedJob.experience_max} years</span>
+                </div>
+                <div>
+                  <span className="text-gray-405 font-medium block">Salary Range</span>
+                  <span className="text-gray-705 dark:text-gray-300">{selectedJob.salary_min > 0 ? `₹${selectedJob.salary_min}L - ₹${selectedJob.salary_max}L` : 'Not Specified'}</span>
+                </div>
+                <div>
+                  <span className="text-gray-405 font-medium block">Work Mode</span>
+                  <span className="text-gray-705 dark:text-gray-300 capitalize">{selectedJob.work_mode}</span>
+                </div>
+              </div>
+              <div>
+                <span className="text-gray-405 font-medium block mb-1">Required Skills</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {(selectedJob.required_skills || []).map((s, idx) => (
+                    <span key={idx} className="bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 px-2 py-0.5 rounded-full text-xs font-semibold">
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {applyError && (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-650 dark:text-red-400 px-4 py-3 rounded-xl mb-4 text-sm">
+                ⚠️ {applyError}
+              </div>
+            )}
+
+            {successMsg && (
+              <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 text-emerald-650 dark:text-emerald-400 px-4 py-3 rounded-xl mb-4 text-sm font-semibold">
+                {successMsg}
+              </div>
+            )}
+
+            <form onSubmit={handleApplySubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-705 dark:text-gray-300 mb-1">
+                  Upload Resume / Documents * (PDF, DOC, DOCX)
+                </label>
+                <input
+                  required
+                  type="file"
+                  accept=".pdf,.doc,.docx"
+                  onChange={(e) => setUploadFile(e.target.files[0])}
+                  className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-teal-500 file:text-white hover:file:bg-teal-600 file:cursor-pointer border border-gray-200 dark:border-gray-750 rounded-xl p-2 bg-transparent"
+                />
+                {uploadFile && (
+                  <p className="text-xs text-teal-500 font-medium mt-1">✓ {uploadFile.name} selected</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-755 dark:text-gray-300 mb-1">
+                  Cover Letter / Notes (Optional)
+                </label>
+                <textarea
+                  rows={4}
+                  value={coverLetter}
+                  onChange={(e) => setCoverLetter(e.target.value)}
+                  placeholder="Tell the recruiter why you're a good fit..."
+                  className="w-full border border-gray-200 dark:border-gray-750 rounded-xl px-4 py-3 bg-transparent text-gray-900 dark:text-white resize-none text-sm outline-none focus:ring-2 focus:ring-teal-500 transition-all"
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setSelectedJob(null)}
+                  className="flex-1 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-teal-500 hover:text-teal-500 py-3 rounded-xl font-medium transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="flex-1 bg-teal-500 hover:bg-teal-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-3 rounded-xl font-bold transition-all shadow-lg shadow-teal-500/20"
+                >
+                  {submitting ? 'Submitting...' : 'Submit Application →'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
