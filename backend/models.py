@@ -150,3 +150,15 @@ class SkillExamAttempt(Base):
     questions = Column(JSON, default=list)
     answers = Column(JSON, default=list)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class JobApplication(Base):
+    __tablename__ = "job_applications"
+    id = Column(Integer, primary_key=True, index=True)
+    job_id = Column(Integer, nullable=False, index=True)
+    user_id = Column(Integer, nullable=False, index=True)
+    cover_letter = Column(Text)
+    resume_filename = Column(String)
+    resume_path = Column(String)
+    queries = Column(JSON, default=list) # [{'sender': 'seeker'/'recruiter', 'name': str, 'message': str, 'created_at': str}]
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
