@@ -1,5 +1,5 @@
 <div align="center">
-<img src="https://capsule-render.vercel.app/api?type=waving&amp;color=0:0f1117,50:7C3AED,100:4ecdc4&amp;height=200&amp;section=header&amp;text=SkillSync%20AI&amp;fontSize=52&amp;fontColor=ffffff&amp;fontAlignY=40&amp;desc=AI-Powered%20Candidate%20Ranking%20%26%20Proctoring%20Platform&amp;descAlignY=60&amp;descSize=18&amp;animation=fadeIn"/>
+<img src="https://capsule-render.vercel.app/api?type=waving&amp;color=0:0f1117,50:4ecdc4,100:0f1117&amp;height=220&amp;section=header&amp;text=SkillSync%20AI&amp;fontSize=55&amp;fontColor=ffffff&amp;fontAlignY=40&amp;desc=AI-Powered%20Candidate%20Ranking%20%26%20Proctoring%20Platform&amp;descAlignY=60&amp;descSize=20&amp;animation=fadeIn"/>
 </div>
 
 <div align="center">
@@ -203,5 +203,5 @@ SkillSync runs on a free-tier fallback architecture to avoid rate limit locks du
 <div align="center">
 <img src="https://capsule-render.vercel.app/api?type=waving&amp;color=0:4ecdc4,100:0f1117&amp;height=120&amp;section=footer"/>
 
-**Built for Track 1 | Redrob INDIA RUNS Hackathon**
+**Built by [Dharanidharan M](https://github.com/dharani25007-code)**
 </div>
