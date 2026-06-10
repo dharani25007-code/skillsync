@@ -155,8 +155,11 @@ def get_jobseeker_profile(
 
 
 @router.get("/jobseeker/all")
-def get_all_jobseekers(db: Session = Depends(get_db)):
-    """Get all job seeker profiles for ranking (recruiter use)"""
+def get_all_jobseekers(
+    db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user)
+):
+    """Get all job seeker profiles for ranking (recruiter use, authenticated)"""
     profiles = db.query(JobSeekerProfile).all()
     return profiles
 
