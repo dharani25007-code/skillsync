@@ -10,6 +10,12 @@ from dotenv import load_dotenv
 import os
 import json
 import httpx
+import time
+
+# ── Server-side exam answer cache (anti-cheat) ─────────────────
+# Stores {user_id: {"questions": [...], "created_at": timestamp}}
+# Answers NEVER leave the server — client only gets question text + options
+_exam_cache: dict = {}
 
 load_dotenv()
 
@@ -163,7 +169,6 @@ class StartExamRequest(BaseModel):
 
 class SubmitExamRequest(BaseModel):
     skill_name: str
-    questions: List[dict]
     answers: List[int]
     time_taken_seconds: Optional[int] = 600
 
@@ -178,7 +183,20 @@ async def generate_exam(
     """Generate exam questions for a skill using Groq AI"""
     questions = await generate_questions_groq(req.skill_name, req.difficulty)
 
-    # Remove correct answers from response (anti-cheat)
+    # ── SECURITY: Store full questions server-side only ─────────
+    _exam_cache[user_id] = {
+        "questions": questions,
+        "skill_name": req.skill_name,
+        "created_at": time.time()
+    }
+
+    # ── Clean old cache entries (older than 30 min) ────────────
+    now = time.time()
+    expired = [uid for uid, data in _exam_cache.items() if now - data["created_at"] > 1800]
+    for uid in expired:
+        del _exam_cache[uid]
+
+    # ── Send ONLY question text + options to browser (NO answers) ──
     questions_safe = [
         {"id": q["id"], "question": q["question"], "options": q["options"]}
         for q in questions
@@ -189,8 +207,7 @@ async def generate_exam(
         "difficulty": req.difficulty,
         "total_questions": len(questions_safe),
         "time_limit_seconds": 600,
-        "questions": questions_safe,
-        "_full_questions": questions  # Store server-side for verification
+        "questions": questions_safe
     }
 
 
@@ -200,13 +217,24 @@ async def submit_exam(
     db: Session = Depends(get_db),
     user_id: int = Depends(get_current_user)
 ):
-    """Submit exam answers and calculate score"""
+    """Submit exam answers and calculate score using SERVER-SIDE answer key"""
 
-    questions = req.questions
+    # ── SECURITY: Use server-side cached answers, NOT client-submitted ones ──
+    cached = _exam_cache.get(user_id)
+    if not cached:
+        raise HTTPException(
+            status_code=400,
+            detail="No active exam session found. Please start a new exam."
+        )
+
+    questions = cached["questions"]
     if not questions:
-        raise HTTPException(status_code=400, detail="No questions provided")
+        raise HTTPException(status_code=400, detail="No questions in exam session")
 
-    # Calculate score
+    # Remove from cache after use (one-time submit)
+    del _exam_cache[user_id]
+
+    # Calculate score using SERVER-SIDE correct answers
     correct = 0
     results = []
 
