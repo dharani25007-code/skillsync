@@ -14,7 +14,6 @@ export default function SkillExam() {
   const [selectedSkill, setSelectedSkill] = useState(skillFromNav)
   const [difficulty, setDifficulty] = useState('intermediate')
   const [questions, setQuestions] = useState([])
-  const [fullQuestions, setFullQuestions] = useState([]) // with answers
   const [answers, setAnswers] = useState([])
   const [currentQ, setCurrentQ] = useState(0)
   const [timeLeft, setTimeLeft] = useState(600)
@@ -48,7 +47,50 @@ export default function SkillExam() {
     }
     document.addEventListener('visibilitychange', handleVisibility)
     return () => document.removeEventListener('visibilitychange', handleVisibility)
-  }, [phase, questions, answers, fullQuestions])
+  }, [phase, questions, answers])
+
+  // Anti-cheat: block copy, paste, cut, right-click, keyboard shortcuts during exam
+  useEffect(() => {
+    if (phase !== 'exam') return
+
+    const blockCopy = (e) => { e.preventDefault(); return false }
+    const blockRightClick = (e) => { e.preventDefault(); return false }
+    const blockKeyboard = (e) => {
+      // Block Ctrl+C, Ctrl+V, Ctrl+X, Ctrl+A, Ctrl+U, Ctrl+Shift+I (DevTools), F12
+      if (
+        (e.ctrlKey && ['c','v','x','a','u','s','p'].includes(e.key.toLowerCase())) ||
+        (e.ctrlKey && e.shiftKey && ['i','j','c'].includes(e.key.toLowerCase())) ||
+        e.key === 'F12' || e.key === 'PrintScreen'
+      ) {
+        e.preventDefault()
+        return false
+      }
+    }
+
+    // Apply anti-select CSS
+    document.body.style.userSelect = 'none'
+    document.body.style.webkitUserSelect = 'none'
+    document.body.style.msUserSelect = 'none'
+    document.body.style.MozUserSelect = 'none'
+
+    document.addEventListener('copy', blockCopy)
+    document.addEventListener('cut', blockCopy)
+    document.addEventListener('paste', blockCopy)
+    document.addEventListener('contextmenu', blockRightClick)
+    document.addEventListener('keydown', blockKeyboard)
+
+    return () => {
+      document.body.style.userSelect = ''
+      document.body.style.webkitUserSelect = ''
+      document.body.style.msUserSelect = ''
+      document.body.style.MozUserSelect = ''
+      document.removeEventListener('copy', blockCopy)
+      document.removeEventListener('cut', blockCopy)
+      document.removeEventListener('paste', blockCopy)
+      document.removeEventListener('contextmenu', blockRightClick)
+      document.removeEventListener('keydown', blockKeyboard)
+    }
+  }, [phase])
 
   // Timer
   useEffect(() => {
@@ -80,7 +122,6 @@ export default function SkillExam() {
       )
 
       setQuestions(res.data.questions)
-      setFullQuestions(res.data._full_questions || res.data.questions)
       setAnswers(new Array(res.data.questions.length).fill(-1))
       setTimeLeft(res.data.time_limit_seconds || 600)
       setStartTime(Date.now())
@@ -113,7 +154,6 @@ export default function SkillExam() {
       const token = localStorage.getItem('token')
       const res = await axios.post(`${API}/exam/submit`, {
         skill_name: selectedSkill,
-        questions: fullQuestions,
         answers: answers,
         time_taken_seconds: timeTaken
       }, {
@@ -122,7 +162,7 @@ export default function SkillExam() {
       setResult(res.data)
       setPhase('result')
     } catch (err) {
-      setError('Failed to submit exam. Please try again.')
+      setError(err.response?.data?.detail || 'Failed to submit exam. Please try again.')
       setPhase('exam')
     }
     setLoading(false)
@@ -228,6 +268,8 @@ export default function SkillExam() {
               <ul className="text-sm text-yellow-700 dark:text-yellow-500 space-y-1">
                 <li>• 10 AI-generated questions, 10 minutes time limit</li>
                 <li>• Do NOT switch tabs — 3 warnings = auto-submit</li>
+                <li>• Copy, paste, right-click and text selection are disabled</li>
+                <li>• Keyboard shortcuts (Ctrl+C, F12, etc.) are blocked</li>
                 <li>• Score ≥ 60% to get verified badge on profile</li>
                 <li>• Best score is saved automatically</li>
                 <li>• You can retake to improve your score anytime</li>
