@@ -6,11 +6,14 @@ const API = 'http://127.0.0.1:8000'
 
 export default function ProfileBuilder() {
   const navigate = useNavigate()
-  const [dark, setDark] = useState(true)
+  const [dark, setDark] = useState(() => {
+    const saved = localStorage.getItem('theme')
+    return saved ? saved === 'dark' : true
+  })
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [saved, setSaved] = useState(false)
-
+ 
   const [profile, setProfile] = useState({
     // Basic Info
     headline: '',
@@ -44,15 +47,16 @@ export default function ProfileBuilder() {
     languages: [],
     projects: [],
   })
-
+ 
   const [skillInput, setSkillInput] = useState('')
   const [certInput, setCertInput] = useState({ name: '', issuer: '', year: '', credential_url: '' })
   const [langInput, setLangInput] = useState({ language: '', proficiency: 'professional' })
-
+ 
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (!token) navigate('/login')
     document.documentElement.classList.toggle('dark', dark)
+    localStorage.setItem('theme', dark ? 'dark' : 'light')
     loadProfile()
   }, [dark])
 
@@ -165,40 +169,71 @@ export default function ProfileBuilder() {
   const smallInputClass = "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white px-3 py-2 rounded-lg outline-none focus:ring-2 focus:ring-teal-500 text-sm w-full"
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-950 transition-all duration-300">
+    <div className="min-h-screen bg-mesh transition-all duration-300">
 
       {/* Navbar */}
-      <nav className="flex items-center justify-between px-8 py-5 border-b border-gray-200 dark:border-gray-800">
-        <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
-          <div className="w-8 h-8 bg-teal-500 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">S</span>
+      <nav className="sticky top-0 z-50 glass border-b border-white/10 dark:border-indigo-500/10">
+        <div className="max-w-6xl mx-auto flex items-center justify-between px-6 md:px-8 py-4">
+          <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigate('/')}>
+            <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/25 group-hover:shadow-indigo-500/40 transition-all group-hover:scale-105">
+              <span className="text-white font-black text-sm">S</span>
+            </div>
+            <span className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+              Skill<span className="gradient-text">Sync</span>
+            </span>
           </div>
-          <span className="text-xl font-bold text-gray-900 dark:text-white">SkillSync</span>
+          <div className="flex items-center gap-3">
+            <button onClick={() => setDark(!dark)}
+              className="p-2.5 rounded-xl bg-white/50 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 text-gray-600 dark:text-gray-300 text-lg transition-all border border-gray-200/50 dark:border-white/5">
+              {dark ? '☀️' : '🌙'}
+            </button>
+            <button onClick={() => navigate('/jobseeker/dashboard')}
+              className="text-gray-500 dark:text-gray-400 hover:text-indigo-500 text-sm font-semibold transition-colors">
+              ← Dashboard
+            </button>
+          </div>
         </div>
-        <button onClick={() => setDark(!dark)}
-          className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-lg">
-          {dark ? '☀️' : '🌙'}
-        </button>
       </nav>
 
       <div className="max-w-2xl mx-auto px-6 py-10">
 
         {/* Progress Steps */}
-        <div className="flex items-center justify-between mb-10 overflow-x-auto pb-2">
-          {steps.map((s, i) => (
-            <div key={i} className="flex items-center">
-              <div
-                onClick={() => setStep(i + 1)}
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all cursor-pointer ${i + 1 < step ? 'bg-teal-500 text-white' :
-                  i + 1 === step ? 'bg-teal-500 text-white ring-4 ring-teal-500/30' :
-                    'bg-gray-100 dark:bg-gray-800 text-gray-400'}`}>
-                {i + 1 < step ? '✓' : i + 1}
+        <div className="flex items-center justify-between mb-10 bg-white/40 dark:bg-slate-900/40 p-5 rounded-2xl border border-gray-150/40 dark:border-white/5 overflow-x-auto pb-3 gap-2">
+          {steps.map((s, i) => {
+            const isActive = i + 1 === step
+            const isCompleted = i + 1 < step
+            return (
+              <div key={i} className="flex items-center flex-1 last:flex-initial">
+                <div className="flex flex-col items-center gap-1.5 cursor-pointer group flex-shrink-0" onClick={() => setStep(i + 1)}>
+                  <div
+                    className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-black transition-all ${
+                      isCompleted
+                        ? 'bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/20'
+                        : isActive
+                        ? 'bg-gradient-to-br from-indigo-500 to-violet-600 text-white ring-4 ring-indigo-500/20 shadow-md shadow-indigo-500/20'
+                        : 'bg-gray-150 dark:bg-gray-800 text-gray-400 group-hover:bg-gray-200 dark:group-hover:bg-gray-750'
+                    }`}
+                  >
+                    {isCompleted ? '✓' : i + 1}
+                  </div>
+                  <span
+                    className={`text-[10px] font-bold tracking-tight transition-colors ${
+                      isActive
+                        ? 'text-indigo-500 dark:text-indigo-400 font-extrabold'
+                        : isCompleted
+                        ? 'text-gray-700 dark:text-gray-300 font-semibold'
+                        : 'text-gray-400 dark:text-gray-500'
+                    }`}
+                  >
+                    {s}
+                  </span>
+                </div>
+                {i < steps.length - 1 && (
+                  <div className={`h-0.5 flex-1 min-w-[12px] mx-1 transition-colors ${isCompleted ? 'bg-indigo-500' : 'bg-gray-200 dark:bg-gray-700'}`} style={{ marginTop: '-18px' }} />
+                )}
               </div>
-              {i < steps.length - 1 && (
-                <div className={`w-6 h-0.5 mx-1 ${i + 1 < step ? 'bg-teal-500' : 'bg-gray-200 dark:bg-gray-700'}`} />
-              )}
-            </div>
-          ))}
+            )
+          })}
         </div>
 
         {/* ── STEP 1: Basic Info ── */}
