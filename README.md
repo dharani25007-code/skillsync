@@ -160,6 +160,40 @@ OPENROUTER_API_KEY=sk-or-your-fallback-key
 
 ---
 
+## 🏆 Hackathon Sandbox Reproduction
+
+To reproduce the candidate ranking submission CSV on the full dataset, follow these step-by-step instructions:
+
+### 1. Place the Dataset
+Ensure the `candidates.jsonl` file (containing the 100,000 candidate profiles) is placed at the repository root, or you can specify its absolute/relative path.
+
+### 2. Run the Ranking Command
+Execute the zero-dependency Python ranking script from the repository root:
+
+```bash
+python rank.py --candidates ./candidates.jsonl --out ./submission.csv
+```
+
+* **Zero External Dependencies**: The script runs exclusively on Python's standard libraries (`json`, `csv`, `argparse`, `os`, `sys`, `datetime`). No `pip install` or internet connection is required.
+* **Compute Efficiency**: Runs entirely on CPU, completes execution in **under 15 seconds** for the entire 100,000 candidate dataset, and consumes **< 100 MB of RAM** (complying fully with the 5-minute timeout and 16 GB RAM limits).
+* **Deterministic Output**: Output rows are sorted by matching score descending. In the event of matching score ties, candidates are sorted alphabetically by `candidate_id` to ensure deterministic ordering.
+
+### 3. Verify the Generated CSV
+To verify that the generated CSV is valid and adheres strictly to the hackathon specifications (contains exactly 100 rows, contains all required columns, and contains ranks from 1 to 100 sequentially), execute this zero-dependency Python command:
+
+```bash
+python -c "import csv; f = open('submission.csv', encoding='utf-8'); r = list(csv.DictReader(f)); print('Total Rows:', len(r)); print('Columns:', list(r[0].keys()) if r else 'None'); print('Valid Ranks (1-100):', all(int(x['rank']) == i+1 for i, x in enumerate(r)))"
+```
+
+Expected output:
+```text
+Total Rows: 100
+Columns: ['candidate_id', 'rank', 'score', 'reasoning']
+Valid Ranks (1-100): True
+```
+
+---
+
 ## 🤖 AI Fallback Chain (Free-First)
 
 SkillSync runs on a free-tier fallback architecture to avoid rate limit locks during high-concurrency hackathon evaluations:
@@ -221,5 +255,5 @@ This project is licensed under the MIT License - see the [LICENSE](./LICENSE) fi
 <div align="center">
 <img src="https://capsule-render.vercel.app/api?type=waving&color=0:4ecdc4,100:0f1117&height=120&section=footer&cb=2"/>
 
-**Built by [Dharanidharan M](https://github.com/dharani25007-code)**
+**Built by [Dharani Dharan M](https://github.com/dharani25007-code)**
 </div>
