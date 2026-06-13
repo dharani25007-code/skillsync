@@ -7,7 +7,10 @@ const API = 'http://127.0.0.1:8000'
 export default function RecruiterDashboard() {
   const navigate = useNavigate()
   const name = localStorage.getItem('name') || 'Recruiter'
-  const [dark, setDark] = useState(true)
+  const [dark, setDark] = useState(() => {
+    const saved = localStorage.getItem('theme')
+    return saved ? saved === 'dark' : true
+  })
   const [history, setHistory] = useState([])
   const [showJobModal, setShowJobModal] = useState(false)
   const [newJob, setNewJob] = useState({
@@ -34,6 +37,7 @@ export default function RecruiterDashboard() {
     const token = localStorage.getItem('token')
     if (!token) navigate('/login')
     document.documentElement.classList.toggle('dark', dark)
+    localStorage.setItem('theme', dark ? 'dark' : 'light')
     loadHistory()
     loadMyJobs()
   }, [dark])
@@ -195,60 +199,66 @@ export default function RecruiterDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-950 transition-all duration-300">
+    <div className="min-h-screen bg-mesh transition-all duration-300">
 
       {/* Navbar */}
-      <nav className="flex items-center justify-between px-8 py-5 border-b border-gray-200 dark:border-gray-800">
-        <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
-          <div className="w-8 h-8 bg-teal-500 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">S</span>
+      <nav className="sticky top-0 z-50 glass border-b border-white/10 dark:border-indigo-500/10">
+        <div className="max-w-6xl mx-auto flex items-center justify-between px-6 md:px-8 py-4">
+          <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigate('/')}>
+            <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/25 group-hover:shadow-indigo-500/40 transition-all group-hover:scale-105">
+              <span className="text-white font-black text-sm">S</span>
+            </div>
+            <span className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+              Skill<span className="gradient-text">Sync</span>
+            </span>
           </div>
-          <span className="text-xl font-bold text-gray-900 dark:text-white">SkillSync</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <button onClick={() => setDark(!dark)}
-            className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-lg">
-            {dark ? '☀️' : '🌙'}
-          </button>
-          <div className="w-9 h-9 bg-purple-500 rounded-full flex items-center justify-center text-white font-bold">
-            {name.charAt(0).toUpperCase()}
+          <div className="flex items-center gap-3">
+            <button onClick={() => setDark(!dark)}
+              className="p-2.5 rounded-xl bg-white/50 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 text-gray-600 dark:text-gray-300 text-lg transition-all border border-gray-200/50 dark:border-white/5">
+              {dark ? '☀️' : '🌙'}
+            </button>
+            <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold shadow-lg shadow-violet-500/20">
+              {name.charAt(0).toUpperCase()}
+            </div>
           </div>
         </div>
       </nav>
 
-      <div className="max-w-5xl mx-auto px-6 py-10">
+      <div className="max-w-6xl mx-auto px-6 py-10">
 
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
-          Welcome, {name}! 🏢
-        </h1>
-        <p className="text-gray-500 dark:text-gray-400 mb-10">
-          Find the perfect candidates for your job openings
-        </p>
+        <div className="mb-10 slide-up">
+          <h1 className="text-3xl md:text-4xl font-black text-gray-900 dark:text-white mb-2">
+            Welcome, {name}! 🏢
+          </h1>
+          <p className="text-gray-500 dark:text-gray-400">
+            Find the perfect candidates for your job openings
+          </p>
+        </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-6 mb-10">
+        <div className="grid grid-cols-3 gap-4 md:gap-6 mb-10 slide-up slide-up-delay-1">
           {[
-            { number: history.length, label: 'Ranking Sessions', icon: '📊' },
-            { number: history.reduce((acc, h) => acc + (h.results?.length || 0), 0), label: 'Candidates Ranked', icon: '👥' },
-            { number: '100K+', label: 'Dataset Size', icon: '🗄️' },
+            { number: history.length, label: 'Ranking Sessions', icon: '📊', gradient: 'from-indigo-500 to-violet-500' },
+            { number: history.reduce((acc, h) => acc + (h.results?.length || 0), 0), label: 'Candidates Ranked', icon: '👥', gradient: 'from-teal-500 to-emerald-500' },
+            { number: '100K+', label: 'Dataset Size', icon: '🗄️', gradient: 'from-amber-500 to-orange-500' },
           ].map((s, i) => (
-            <div key={i} className="bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 text-center">
-              <div className="text-3xl mb-2">{s.icon}</div>
-              <div className="text-3xl font-bold text-teal-500 mb-1">{s.number}</div>
+            <div key={i} className="card p-5 md:p-6 text-center glow-hover">
+              <div className="text-2xl md:text-3xl mb-2">{s.icon}</div>
+              <div className={`text-2xl md:text-3xl font-black bg-gradient-to-r ${s.gradient} bg-clip-text text-transparent mb-1`}>{s.number}</div>
               <div className="text-gray-500 dark:text-gray-400 text-sm font-medium">{s.label}</div>
             </div>
           ))}
         </div>
 
         {/* Actions */}
-        <div className="grid md:grid-cols-2 gap-6 mb-10">
+        <div className="grid md:grid-cols-2 gap-5 mb-10 slide-up slide-up-delay-2">
           {[
             {
               icon: '🎯',
               title: 'Rank Candidates with AI',
               desc: 'Post a job description and let our AI rank the best candidates instantly from 100K+ profiles',
               action: 'Start Ranking',
-              color: 'teal',
+              gradient: 'from-indigo-500 to-violet-500',
               link: '/recruiter/rank'
             },
             {
@@ -256,7 +266,7 @@ export default function RecruiterDashboard() {
               title: 'Use INDIA RUNS Dataset',
               desc: 'Rank candidates from the official 100K Redrob hackathon dataset',
               action: 'Use Dataset',
-              color: 'teal',
+              gradient: 'from-teal-500 to-emerald-500',
               link: '/recruiter/rank'
             },
             {
@@ -264,7 +274,7 @@ export default function RecruiterDashboard() {
               title: 'Upload Your Own Dataset',
               desc: 'Upload your own CSV candidate dataset and rank with AI',
               action: 'Upload CSV',
-              color: 'teal',
+              gradient: 'from-violet-500 to-purple-500',
               link: '/recruiter/rank'
             },
             {
@@ -272,34 +282,34 @@ export default function RecruiterDashboard() {
               title: 'Post a Job',
               desc: 'Create a new job posting for candidates to discover and apply',
               action: 'Post Job',
-              color: 'teal',
+              gradient: 'from-amber-500 to-orange-500',
               onClick: () => setShowJobModal(true)
             },
           ].map((card, i) => (
             <div key={i}
-              className="bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 hover:border-teal-500 transition-all">
-              <div className="text-3xl mb-3">{card.icon}</div>
+              className="card p-6 glow-hover group">
+              <div className="text-3xl mb-3 group-hover:scale-110 transition-transform inline-block">{card.icon}</div>
               <h3 className="font-bold text-gray-900 dark:text-white mb-2">{card.title}</h3>
-              <p className="text-gray-500 dark:text-gray-400 text-sm mb-4">{card.desc}</p>
+              <p className="text-gray-500 dark:text-gray-400 text-sm mb-5">{card.desc}</p>
               <button
                 onClick={() => card.onClick ? card.onClick() : (card.link && navigate(card.link))}
-                className="text-sm font-medium px-4 py-2 rounded-lg bg-teal-500 text-white hover:bg-teal-600 cursor-pointer transition-all">
-                {card.action}
+                className={`text-sm font-semibold px-5 py-2.5 rounded-xl transition-all text-white bg-gradient-to-r ${card.gradient} shadow-md hover:shadow-lg hover:scale-[1.02] cursor-pointer`}>
+                {card.action} →
               </button>
             </div>
           ))}
         </div>
 
         {/* Active Job Postings */}
-        <div className="bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 mb-6">
-          <h3 className="font-bold text-gray-900 dark:text-white mb-4">💼 Your Active Job Postings</h3>
+        <div className="card p-6 mb-6">
+          <h3 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2"><span className="text-lg">💼</span> Your Active Job Postings</h3>
           {myJobs.length === 0 ? (
             <p className="text-sm text-gray-500 dark:text-gray-400">No jobs posted yet. Click "Post a Job" to start!</p>
           ) : (
             <div className="space-y-3">
               {myJobs.map((job) => (
                 <div key={job.id}
-                  className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700">
+                  className="flex items-center justify-between p-4 bg-gray-50/50 dark:bg-white/[0.02] rounded-xl border border-gray-100 dark:border-white/5 hover:border-indigo-200 dark:hover:border-indigo-800/50 transition-all">
                   <div>
                     <h4 className="text-sm font-bold text-gray-900 dark:text-white">{job.title}</h4>
                     <p className="text-xs text-gray-400 mt-1">
@@ -312,7 +322,7 @@ export default function RecruiterDashboard() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleViewApplicants(job.id, job.title)}
-                      className="text-xs font-semibold bg-teal-50 dark:bg-teal-900/20 text-teal-650 dark:text-teal-400 px-3 py-1.5 rounded-lg border border-teal-200 dark:border-teal-850 hover:bg-teal-500 hover:text-white transition-all cursor-pointer">
+                      className="text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 px-3 py-1.5 rounded-lg border border-indigo-200/50 dark:border-indigo-800/50 hover:bg-indigo-500 hover:text-white hover:border-indigo-500 transition-all cursor-pointer">
                       Applicants
                     </button>
                     <button
@@ -323,12 +333,12 @@ export default function RecruiterDashboard() {
                         })
                         setShowEditModal(true)
                       }}
-                      className="text-xs font-semibold bg-amber-50 dark:bg-amber-900/20 text-amber-650 dark:text-amber-400 px-3 py-1.5 rounded-lg border border-amber-200 dark:border-amber-850 hover:bg-amber-500 hover:text-white transition-all cursor-pointer">
+                      className="text-xs font-semibold bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 px-3 py-1.5 rounded-lg border border-amber-200/50 dark:border-amber-800/50 hover:bg-amber-500 hover:text-white hover:border-amber-500 transition-all cursor-pointer">
                       Edit
                     </button>
                     <button
                       onClick={() => handleDeleteJob(job.id)}
-                      className="text-xs font-semibold bg-red-50 dark:bg-red-900/20 text-red-650 dark:text-red-400 px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-850 hover:bg-red-500 hover:text-white transition-all cursor-pointer">
+                      className="text-xs font-semibold bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 px-3 py-1.5 rounded-lg border border-red-200/50 dark:border-red-800/50 hover:bg-red-500 hover:text-white hover:border-red-500 transition-all cursor-pointer">
                       Delete
                     </button>
                   </div>
@@ -340,12 +350,12 @@ export default function RecruiterDashboard() {
 
         {/* Recent Rankings */}
         {history.length > 0 && (
-          <div className="bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 mb-6">
-            <h3 className="font-bold text-gray-900 dark:text-white mb-4">📋 Recent Ranking Sessions</h3>
+          <div className="card p-6 mb-6">
+            <h3 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2"><span className="text-lg">📋</span> Recent Ranking Sessions</h3>
             <div className="space-y-3">
               {history.slice(0, 5).map((h, i) => (
                 <div key={i}
-                  className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700">
+                  className="flex items-center justify-between p-3 bg-gray-50/50 dark:bg-white/[0.02] rounded-xl border border-gray-100 dark:border-white/5 hover:border-indigo-200 dark:hover:border-indigo-800/50 transition-all">
                   <div>
                     <p className="text-sm font-medium text-gray-900 dark:text-white">
                       {h.jd_text?.slice(0, 60)}...
@@ -364,8 +374,8 @@ export default function RecruiterDashboard() {
         )}
 
         <button onClick={() => { localStorage.clear(); navigate('/') }}
-          className="text-gray-400 hover:text-red-500 text-sm transition-all">
-          → Logout
+          className="text-gray-400 hover:text-red-500 text-sm transition-all font-medium">
+          ← Logout
         </button>
       </div>
 
@@ -590,7 +600,7 @@ export default function RecruiterDashboard() {
                     )}
 
                     {app.resume_filename && (
-                      <div className="flex items-center justify-between bg-teal-50/50 dark:bg-teal-950/10 p-2.5 rounded-xl border border-teal-100/50 dark:border-teal-900/20">
+                      <div className="flex items-center justify-between bg-teal-50/50 dark:bg-teal-950/10 p-2.5 rounded-xl border border-teal-100/50 dark:border-teal-900/20 mb-3">
                         <div className="flex items-center gap-2">
                           <span className="text-lg">📄</span>
                           <span className="text-xs font-semibold text-gray-750 dark:text-gray-300 truncate max-w-[200px]">
@@ -607,19 +617,23 @@ export default function RecruiterDashboard() {
                     )}
 
                     {/* Queries Chat Thread */}
-                    <div className="mt-4 border-t border-gray-200 dark:border-gray-700 pt-3">
-                      <span className="text-[10px] text-gray-400 font-bold block mb-1">Candidate Queries / Messages:</span>
-                      <div className="space-y-2 max-h-40 overflow-y-auto mb-3 bg-white dark:bg-gray-850 p-2.5 rounded-lg border border-gray-100 dark:border-gray-800">
+                    <div className="mt-4 border-t border-gray-200 dark:border-gray-770 pt-4">
+                      <span className="text-[10px] text-gray-400 font-bold block mb-2 tracking-wider uppercase">Conversation Thread</span>
+                      <div className="space-y-3 max-h-48 overflow-y-auto mb-3 bg-gray-50/50 dark:bg-slate-950/40 p-3 rounded-2xl border border-gray-100 dark:border-white/5 scroll-smooth">
                         {(app.queries && app.queries.length > 0) ? (
                           app.queries.map((q, idx) => (
-                            <div key={idx} className={`text-xs p-2 rounded-lg ${q.sender === 'recruiter' ? 'bg-teal-50/50 dark:bg-teal-950/20 text-right' : 'bg-gray-100/60 dark:bg-gray-800/60 text-left'}`}>
-                              <span className="font-bold text-[10px] block text-gray-405">{q.sender === 'recruiter' ? 'You' : app.name}</span>
-                              <p className="mt-0.5 text-gray-805 dark:text-gray-200">{q.message}</p>
-                              <span className="text-[9px] text-gray-400 block mt-0.5">{new Date(q.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                            <div key={idx} className={`flex flex-col ${q.sender === 'recruiter' ? 'items-end' : 'items-start'}`}>
+                              <div className={`max-w-[85%] rounded-2xl p-3 text-xs shadow-sm ${q.sender === 'recruiter' ? 'bg-gradient-to-br from-indigo-500 to-violet-600 text-white rounded-tr-none shadow-indigo-500/10' : 'bg-white dark:bg-slate-900 text-gray-700 dark:text-gray-200 rounded-tl-none border border-gray-100 dark:border-white/5'}`}>
+                                <span className="font-bold text-[9px] block mb-1 opacity-70 tracking-wider uppercase">{q.sender === 'recruiter' ? 'You' : app.name}</span>
+                                <p className="leading-relaxed font-medium">{q.message}</p>
+                                <span className="text-[8px] opacity-60 block mt-1 text-right">
+                                  {new Date(q.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                </span>
+                              </div>
                             </div>
                           ))
                         ) : (
-                          <p className="text-[11px] text-gray-450 dark:text-gray-400 italic">No queries raised yet.</p>
+                          <p className="text-[11px] text-gray-400 dark:text-gray-500 italic text-center py-4">No conversation started yet.</p>
                         )}
                       </div>
                       <div className="flex gap-2">
@@ -633,19 +647,19 @@ export default function RecruiterDashboard() {
                               e.target.value = '';
                             }
                           }}
-                          className="flex-1 border border-gray-200 dark:border-gray-750 rounded-xl px-3 py-1.5 bg-transparent text-xs text-gray-900 dark:text-white outline-none focus:ring-1 focus:ring-teal-500"
+                          className="flex-1 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2 bg-white dark:bg-white/5 text-xs text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
                         />
                         <button
                           onClick={() => {
                             const input = document.getElementById(`reply-input-${app.application_id}`);
-                            if (input && input.value.trim()) {
-                              handleSendQueryReply(app.application_id, input.value.trim());
-                              input.value = '';
-                            }
+                             if (input && input.value.trim()) {
+                               handleSendQueryReply(app.application_id, input.value.trim());
+                               input.value = '';
+                             }
                           }}
-                          className="bg-teal-500 hover:bg-teal-600 text-white text-xs font-semibold px-3.5 py-1.5 rounded-lg transition-all cursor-pointer"
+                          className="btn-primary text-xs font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer shadow-md shadow-indigo-500/10"
                         >
-                          Reply
+                          Send
                         </button>
                       </div>
                     </div>
