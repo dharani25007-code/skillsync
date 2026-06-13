@@ -233,7 +233,10 @@ function CandidateCard({ r, rank, expanded, onToggle }) {
 
 export default function RankCandidates() {
   const navigate = useNavigate()
-  const [dark, setDark] = useState(true)
+  const [dark, setDark] = useState(() => {
+    const saved = localStorage.getItem('theme')
+    return saved ? saved === 'dark' : true
+  })
   const [step, setStep] = useState(1)
   const [jd, setJd] = useState('')
   const [datasetOption, setDatasetOption] = useState('')
@@ -250,6 +253,7 @@ export default function RankCandidates() {
     const token = localStorage.getItem('token')
     if (!token) navigate('/login')
     document.documentElement.classList.toggle('dark', dark)
+    localStorage.setItem('theme', dark ? 'dark' : 'light')
   }, [dark])
 
   const toggleCard = (idx) => {
@@ -645,55 +649,59 @@ export default function RankCandidates() {
   )
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-950 transition-all duration-300">
+    <div className="min-h-screen bg-mesh transition-all duration-300">
       {/* Navbar */}
-      <nav className="flex items-center justify-between px-8 py-4 border-b border-gray-200 dark:border-gray-800 sticky top-0 bg-white/80 dark:bg-gray-950/80 backdrop-blur-md z-10">
-        <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
-          <div className="w-8 h-8 bg-teal-500 rounded-lg flex items-center justify-center">
-            <span className="text-white font-black text-sm">S</span>
+      <nav className="sticky top-0 z-50 glass border-b border-white/10 dark:border-indigo-500/10">
+        <div className="max-w-5xl mx-auto flex items-center justify-between px-6 md:px-8 py-4">
+          <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigate('/')}>
+            <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/25 group-hover:shadow-indigo-500/40 transition-all group-hover:scale-105">
+              <span className="text-white font-black text-sm">S</span>
+            </div>
+            <span className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+              Skill<span className="gradient-text">Sync</span>
+            </span>
           </div>
-          <span className="text-xl font-black text-gray-900 dark:text-white">SkillSync</span>
-        </div>
 
-        {/* Step indicator */}
-        <div className="hidden sm:flex items-center gap-2">
-          {['Job Description', 'Dataset', 'Results'].map((label, i) => {
-            const s = i + 1
-            return (
-              <div key={s} className="flex items-center gap-2">
-                <div
-                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                    step === s
-                      ? 'bg-teal-500 text-white'
-                      : step > s
-                      ? 'bg-emerald-500 text-white'
-                      : 'bg-gray-200 dark:bg-gray-700 text-gray-500'
-                  }`}
-                >
-                  {step > s ? '✓' : s}
+          {/* Step indicator */}
+          <div className="hidden sm:flex items-center gap-2">
+            {['Job Description', 'Dataset', 'Results'].map((label, i) => {
+              const s = i + 1
+              return (
+                <div key={s} className="flex items-center gap-2">
+                  <div
+                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                      step === s
+                        ? 'bg-gradient-to-br from-indigo-500 to-violet-500 text-white shadow-md shadow-indigo-500/20'
+                        : step > s
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-gray-200 dark:bg-white/10 text-gray-500'
+                    }`}
+                  >
+                    {step > s ? '✓' : s}
+                  </div>
+                  <span className={`text-xs font-medium hidden md:block ${step === s ? 'text-indigo-500' : 'text-gray-400'}`}>
+                    {label}
+                  </span>
+                  {s < 3 && <span className="text-gray-300 dark:text-gray-600">›</span>}
                 </div>
-                <span className={`text-xs font-medium hidden md:block ${step === s ? 'text-teal-500' : 'text-gray-400'}`}>
-                  {label}
-                </span>
-                {s < 3 && <span className="text-gray-300 dark:text-gray-600">›</span>}
-              </div>
-            )
-          })}
-        </div>
+              )
+            })}
+          </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setDark(!dark)}
-            className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-lg"
-          >
-            {dark ? '☀️' : '🌙'}
-          </button>
-          <button
-            onClick={() => navigate('/recruiter/dashboard')}
-            className="text-gray-500 dark:text-gray-400 hover:text-teal-500 text-sm font-medium transition-colors"
-          >
-            ← Dashboard
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setDark(!dark)}
+              className="p-2.5 rounded-xl bg-white/50 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 text-gray-600 dark:text-gray-300 text-lg transition-all border border-gray-200/50 dark:border-white/5"
+            >
+              {dark ? '☀️' : '🌙'}
+            </button>
+            <button
+              onClick={() => navigate('/recruiter/dashboard')}
+              className="text-gray-500 dark:text-gray-400 hover:text-indigo-500 text-sm font-semibold transition-colors"
+            >
+              ← Dashboard
+            </button>
+          </div>
         </div>
       </nav>
 
