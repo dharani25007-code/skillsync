@@ -9,7 +9,10 @@ export default function SkillExam() {
   const location = useLocation()
   const skillFromNav = location.state?.skill || ''
 
-  const [dark, setDark] = useState(true)
+  const [dark, setDark] = useState(() => {
+    const saved = localStorage.getItem('theme')
+    return saved ? saved === 'dark' : true
+  })
   const [phase, setPhase] = useState('select')
   const [selectedSkill, setSelectedSkill] = useState(skillFromNav)
   const [difficulty, setDifficulty] = useState('intermediate')
@@ -26,6 +29,7 @@ export default function SkillExam() {
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark)
+    localStorage.setItem('theme', dark ? 'dark' : 'light')
   }, [dark])
 
   // Anti-cheat: detect tab switch
@@ -181,32 +185,64 @@ export default function SkillExam() {
     'TensorFlow', 'PyTorch', 'Pandas', 'NumPy', 'Scikit-learn'
   ]
 
+  const renderConfetti = () => {
+    const colors = ['#6366f1', '#14b8a6', '#f59e0b', '#ec4899', '#10b981']
+    return Array.from({ length: 45 }).map((_, i) => {
+      const left = Math.random() * 100
+      const delay = Math.random() * 2
+      const size = Math.random() * 6 + 6
+      const color = colors[Math.floor(Math.random() * colors.length)]
+      return (
+        <div
+          key={i}
+          className="confetti-particle pointer-events-none"
+          style={{
+            left: `${left}%`,
+            animationDelay: `${delay}s`,
+            width: `${size}px`,
+            height: `${size}px`,
+            backgroundColor: color,
+            borderRadius: Math.random() > 0.5 ? '50%' : '2px'
+          }}
+        />
+      )
+    })
+  }
+
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-950 transition-all duration-300">
+    <div className="min-h-screen bg-mesh transition-all duration-300">
 
       {/* Navbar */}
-      <nav className="flex items-center justify-between px-8 py-5 border-b border-gray-200 dark:border-gray-800">
-        <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
-          <div className="w-8 h-8 bg-teal-500 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">S</span>
+      <nav className="sticky top-0 z-50 glass border-b border-white/10 dark:border-indigo-500/10">
+        <div className="max-w-6xl mx-auto flex items-center justify-between px-6 md:px-8 py-4">
+          <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigate('/')}>
+            <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/25 group-hover:shadow-indigo-500/40 transition-all group-hover:scale-105">
+              <span className="text-white font-black text-sm">S</span>
+            </div>
+            <span className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+              Skill<span className="gradient-text">Sync</span>
+            </span>
           </div>
-          <span className="text-xl font-bold text-gray-900 dark:text-white">SkillSync</span>
-        </div>
-        <div className="flex items-center gap-3">
-          {phase === 'exam' && (
-            <div className={`px-4 py-2 rounded-lg font-mono font-bold text-lg ${timeLeft < 60 ? 'bg-red-100 dark:bg-red-900/30 text-red-600' : 'bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400'}`}>
-              ⏱ {formatTime(timeLeft)}
-            </div>
-          )}
-          {phase === 'exam' && tabWarnings > 0 && (
-            <div className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 px-3 py-1 rounded-lg text-sm font-medium">
-              ⚠️ {tabWarnings}/3 warnings
-            </div>
-          )}
-          <button onClick={() => setDark(!dark)}
-            className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-lg">
-            {dark ? '☀️' : '🌙'}
-          </button>
+          <div className="flex items-center gap-3">
+            {phase === 'exam' && (
+              <div className={`px-4 py-2 rounded-xl font-mono font-black text-base transition-all shadow-sm ${timeLeft < 60 ? 'bg-red-500/10 text-red-500 border border-red-500/20 animate-pulse' : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20'}`}>
+                ⏱ {formatTime(timeLeft)}
+              </div>
+            )}
+            {phase === 'exam' && tabWarnings > 0 && (
+              <div className="bg-amber-500/10 text-amber-600 dark:text-amber-400 px-3.5 py-2 rounded-xl text-xs font-bold border border-amber-500/20">
+                ⚠️ {tabWarnings}/3 Warnings
+              </div>
+            )}
+            <button onClick={() => setDark(!dark)}
+              className="p-2.5 rounded-xl bg-white/50 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 text-gray-600 dark:text-gray-300 text-lg transition-all border border-gray-200/50 dark:border-white/5">
+              {dark ? '☀️' : '🌙'}
+            </button>
+            <button onClick={() => navigate('/jobseeker/dashboard')}
+              className="text-gray-500 dark:text-gray-400 hover:text-indigo-500 text-sm font-semibold transition-colors">
+              ← Dashboard
+            </button>
+          </div>
         </div>
       </nav>
 
@@ -324,8 +360,12 @@ export default function SkillExam() {
               <div className="space-y-3">
                 {questions[currentQ].options.map((option, i) => (
                   <button key={i} onClick={() => selectAnswer(i)}
-                    className={`w-full text-left px-5 py-4 rounded-xl border-2 transition-all ${answers[currentQ] === i ? 'border-teal-500 bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-300' : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-teal-300 hover:bg-gray-50 dark:hover:bg-gray-800'}`}>
-                    <span className="font-bold mr-3 text-teal-500">{['A', 'B', 'C', 'D'][i]}.</span>
+                    className={`w-full text-left px-5 py-4 rounded-xl border-2 transition-all cursor-pointer ${
+                      answers[currentQ] === i
+                        ? 'border-indigo-500 bg-indigo-500/5 text-indigo-700 dark:text-indigo-300 ring-2 ring-indigo-500/20 shadow-md shadow-indigo-500/5 scale-[1.01]'
+                        : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-indigo-400 hover:bg-indigo-500/[0.01] hover:scale-[1.005]'
+                    }`}>
+                    <span className={`font-bold mr-3 ${answers[currentQ] === i ? 'text-indigo-500' : 'text-gray-400 dark:text-gray-500'}`}>{['A', 'B', 'C', 'D'][i]}.</span>
                     {option}
                   </button>
                 ))}
@@ -365,21 +405,40 @@ export default function SkillExam() {
 
         {/* ── RESULT ── */}
         {phase === 'result' && result && (
-          <div>
-            <div className={`text-center py-8 rounded-2xl mb-6 ${result.passed ? 'bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800' : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'}`}>
-              <div className="text-5xl mb-3">{result.passed ? '🏆' : '📚'}</div>
-              <h2 className="text-4xl font-bold mb-2" style={{ color: result.passed ? '#14b8a6' : '#ef4444' }}>
-                {result.score}%
-              </h2>
-              <p className="font-semibold text-gray-900 dark:text-white mb-1 text-lg">
-                {result.passed ? '✅ Skill Verified!' : '❌ Not Passed Yet'}
+          <div className="relative">
+            {result.passed && renderConfetti()}
+            <div className={`text-center py-10 px-6 rounded-3xl mb-8 relative overflow-hidden card p-8 border ${
+              result.passed
+                ? 'border-teal-300 dark:border-teal-800 bg-teal-50/20 dark:bg-teal-950/10 shadow-lg shadow-teal-500/5'
+                : 'border-red-350 dark:border-red-900/30 bg-red-50/20 dark:bg-red-950/10 shadow-lg shadow-red-500/5'
+            }`}>
+              <div className="text-6xl mb-4">{result.passed ? '🏆' : '📚'}</div>
+              
+              {/* Circular gauge result display */}
+              <div className="relative w-32 h-32 mx-auto mb-4 flex items-center justify-center">
+                <svg className="w-full h-full transform -rotate-90">
+                  <circle cx="64" cy="64" r="54" strokeWidth="8" stroke="rgba(99, 102, 241, 0.1)" fill="transparent" />
+                  <circle cx="64" cy="64" r="54" strokeWidth="8"
+                    stroke={result.passed ? '#14b8a6' : '#ef4444'}
+                    strokeDasharray={2 * Math.PI * 54}
+                    strokeDashoffset={2 * Math.PI * 54 * (1 - result.score / 100)}
+                    strokeLinecap="round" fill="transparent"
+                    className="transition-all duration-1000 ease-out" />
+                </svg>
+                <div className="absolute text-3xl font-black text-gray-900 dark:text-white">
+                  {result.score}%
+                </div>
+              </div>
+
+              <p className="font-black text-gray-900 dark:text-white mb-2 text-xl tracking-tight">
+                {result.passed ? 'Verification Passed!' : 'Verification Not Passed'}
               </p>
-              <p className="text-gray-500 dark:text-gray-400 text-sm">
-                {result.correct}/{result.total} correct answers
+              <p className="text-gray-500 dark:text-gray-400 text-sm mb-4">
+                You got {result.correct} out of {result.total} questions correct
               </p>
               {result.passed && (
-                <div className="mt-3 inline-block bg-teal-500 text-white px-4 py-2 rounded-full text-sm font-medium">
-                  🎖️ {selectedSkill} Badge Added to Profile!
+                <div className="inline-flex items-center gap-1.5 bg-gradient-to-r from-teal-500 to-emerald-500 text-white px-5 py-2.5 rounded-full text-xs font-bold shadow-md shadow-teal-500/20">
+                  🎖️ {selectedSkill} Verified Badge Added!
                 </div>
               )}
             </div>
