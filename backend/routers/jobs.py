@@ -114,67 +114,71 @@ def list_jobs(
     user_id: int = Depends(get_current_user)
 ):
     """Get all active jobs with match scores for the current user"""
-    # Get user profile for matching
-    profile = db.query(JobSeekerProfile).filter(
-        JobSeekerProfile.user_id == user_id
-    ).first()
-
-    # Get jobs from DB
-    db_jobs = db.query(JobPost).filter(JobPost.status == "active").all()
-
-    result = []
-
-    # Add DB jobs
-    for job in db_jobs:
-        applied = db.query(JobApplication).filter(
-            JobApplication.job_id == job.id,
-            JobApplication.user_id == user_id
-        ).first() is not None
-
-        # Look up the recruiter's company name
-        recruiter_profile = db.query(RecruiterProfile).filter(
-            RecruiterProfile.user_id == job.recruiter_id
+    try:
+        # Get user profile for matching
+        profile = db.query(JobSeekerProfile).filter(
+            JobSeekerProfile.user_id == user_id
         ).first()
-        recruiter_user = db.query(User).filter(User.id == job.recruiter_id).first()
-        company_name = (recruiter_profile.company_name if recruiter_profile and recruiter_profile.company_name
-                        else recruiter_user.name if recruiter_user
-                        else "Recruiter Company")
 
-        # Calculate actual days since posting
-        from datetime import datetime as dt
-        posted_days = 1
-        if job.created_at:
-            try:
-                delta = dt.utcnow() - job.created_at.replace(tzinfo=None)
-                posted_days = max(0, delta.days)
-            except Exception:
-                posted_days = 1
+        # Get jobs from DB
+        db_jobs = db.query(JobPost).filter(JobPost.status == "active").all()
 
-        job_dict = {
-            "id": job.id,
-            "recruiter_id": job.recruiter_id,
-            "title": job.title,
-            "company": company_name,
-            "description": job.description,
-            "required_skills": job.required_skills or [],
-            "experience_min": job.experience_min,
-            "experience_max": job.experience_max,
-            "location": job.location or "India",
-            "work_mode": job.work_mode or "Flexible",
-            "salary_min": job.salary_min or 0,
-            "salary_max": job.salary_max or 0,
-            "industry": job.industry or "Technology",
-            "status": "active",
-            "posted_days_ago": posted_days,
-            "source": "skillsync",
-            "applied": applied
-        }
-        job_dict["match_score"] = match_score(job_dict, profile)
-        result.append(job_dict)
+        result = []
 
-    # Sort by match score
-    result.sort(key=lambda x: x["match_score"], reverse=True)
-    return result
+        # Add DB jobs
+        for job in db_jobs:
+            applied = db.query(JobApplication).filter(
+                JobApplication.job_id == job.id,
+                JobApplication.user_id == user_id
+            ).first() is not None
+
+            # Look up the recruiter's company name
+            recruiter_profile = db.query(RecruiterProfile).filter(
+                RecruiterProfile.user_id == job.recruiter_id
+            ).first()
+            recruiter_user = db.query(User).filter(User.id == job.recruiter_id).first()
+            company_name = (recruiter_profile.company_name if recruiter_profile and recruiter_profile.company_name
+                            else recruiter_user.name if recruiter_user
+                            else "Recruiter Company")
+
+            # Calculate actual days since posting
+            from datetime import datetime as dt
+            posted_days = 1
+            if job.created_at:
+                try:
+                    delta = dt.utcnow() - job.created_at.replace(tzinfo=None)
+                    posted_days = max(0, delta.days)
+                except Exception:
+                    posted_days = 1
+
+            job_dict = {
+                "id": job.id,
+                "recruiter_id": job.recruiter_id,
+                "title": job.title,
+                "company": company_name,
+                "description": job.description,
+                "required_skills": job.required_skills or [],
+                "experience_min": job.experience_min,
+                "experience_max": job.experience_max,
+                "location": job.location or "India",
+                "work_mode": job.work_mode or "Flexible",
+                "salary_min": job.salary_min or 0,
+                "salary_max": job.salary_max or 0,
+                "industry": job.industry or "Technology",
+                "status": "active",
+                "posted_days_ago": posted_days,
+                "source": "skillsync",
+                "applied": applied
+            }
+            job_dict["match_score"] = match_score(job_dict, profile)
+            result.append(job_dict)
+
+        # Sort by match score
+        result.sort(key=lambda x: x["match_score"], reverse=True)
+        return result
+    except Exception as e:
+        print(f"Database error in /jobs/list: {e}")
+        return []
 
 
 @router.post("/post")
