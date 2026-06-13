@@ -494,11 +494,11 @@ async def rank_candidates(
         # Prioritize the real hackathon dataset (sample_submission.csv)
         base_dir = os.path.dirname(os.path.dirname(__file__))
         possible_paths = [
+            os.path.join(base_dir, "data", "candidates_100k.jsonl"),
+            "data/candidates_100k.jsonl",
             os.path.join(base_dir, "data", "sample_submission.csv"),
             "data/sample_submission.csv",
-            os.path.join(base_dir, "data", "candidates_100k.jsonl"),
             os.path.join(base_dir, "data", "candidates.jsonl"),
-            "data/candidates_100k.jsonl",
             "data/candidates.jsonl",
         ]
 
@@ -522,7 +522,7 @@ async def rank_candidates(
         if hackathon_file.endswith(".jsonl"):
             with open(hackathon_file, encoding="utf-8") as f:
                 for line in f:
-                    if count >= 50000:  # Process up to 50K for speed
+                    if count >= 100000:  # Process up to 100K
                         break
                     line = line.strip()
                     if not line:
@@ -555,7 +555,7 @@ async def rank_candidates(
             with open(hackathon_file, encoding="utf-8") as f:
                 reader = csv.DictReader(f)
                 for row in reader:
-                    if count >= 10000:
+                    if count >= 100000:
                         break
                     reasoning = row.get("reasoning", "")
                     if not reasoning:
