@@ -69,16 +69,17 @@ BAD_TITLE_KEYWORDS = [
 ]
 
 CONSULTING_FIRMS = [
-    "tcs", "infosys", "wipro", "accenture", "cognizant",
-    "capgemini", "hcl technologies", "tech mahindra", "mphasis",
-    "hexaware", "mindtree", "l&t infotech"
+    "tcs", "infosys", "wipro", "accenture", "cognizant", "capgemini",
+    "hcl technologies", "hcl", "tech mahindra", "mphasis", "hexaware",
+    "mindtree", "l&t infotech", "ltts", "tata consultancy services", "cognizant technology solutions"
 ]
 
 PRODUCT_COMPANIES = [
     "google", "microsoft", "amazon", "meta", "apple", "netflix",
-    "flipkart", "swiggy", "zomato", "razorpay", "freshworks",
-    "zoho", "phonepe", "cred", "meesho", "uber", "airbnb",
-    "openai", "anthropic", "huggingface", "databricks"
+    "flipkart", "swiggy", "zomato", "razorpay", "freshworks", "zoho",
+    "phonepe", "cred", "meesho", "uber", "airbnb", "openai", "anthropic",
+    "huggingface", "databricks", "atlassian", "stripe", "notion", "figma",
+    "postman", "dream11", "sharechat", "ola", "makemytrip", "policybazaar"
 ]
 
 
@@ -118,8 +119,7 @@ def extract_jd_requirements(jd_text: str) -> dict:
 def score_candidate_full(candidate: dict, jd_req: dict) -> dict:
     """
     5-signal scoring system.
-    For TECH JDs (has required_skills): penalize irrelevant roles, reward tech.
-    For NON-TECH JDs (no required_skills): title match is primary signal.
+    Supports both flattened (from database) and nested (from JSONL hackathon dataset) candidate structures.
     """
     required_skills = jd_req["required_skills"]
     min_exp = jd_req["min_exp"]
@@ -133,56 +133,170 @@ def score_candidate_full(candidate: dict, jd_req: dict) -> dict:
         any(kw in f" {jd_full} " or kw in f" {jd_title} " for kw in TECH_TITLE_KEYWORDS)
     )
 
-    # ── Signal 1: Career Relevance (30%) ─────────────────────
-    has_bad_title = False  # Always defined
-    title = (candidate.get("current_title") or "").lower()
-    career = candidate.get("career_history", []) or []
+    # ── Nested properties resolver ─────────────────────────────────
+    prof = candidate.get("profile") or {}
+    signals = candidate.get("redrob_signals") or {}
 
+    title = (candidate.get("current_title") or prof.get("current_title") or "").strip().lower()
+    years = float(candidate.get("years_of_experience") or prof.get("years_of_experience") or 0.0)
+    open_to_work = bool(candidate.get("open_to_work") or signals.get("open_to_work_flag") or False)
+    response_rate = float(candidate.get("recruiter_response_rate") or signals.get("recruiter_response_rate") or 0.5)
+    github_score = float(candidate.get("github_activity_score") or signals.get("github_activity_score") or -1.0)
+    interview_rate = float(candidate.get("interview_completion_rate") or signals.get("interview_completion_rate") or 0.5)
+    notice_period = int(candidate.get("notice_period_days") or signals.get("notice_period_days") or 90)
+    saved_30d = int(candidate.get("saved_by_recruiters_30d") or signals.get("saved_by_recruiters_30d") or 0)
+    location = (candidate.get("location") or prof.get("location") or "India").strip()
+    country = (candidate.get("country") or prof.get("country") or "").strip().lower()
+    willing_relocate = bool(candidate.get("willing_to_relocate") or signals.get("willing_to_relocate") or False)
+    
+    skills = candidate.get("skills", []) or []
+    career = candidate.get("career_history") or candidate.get("experience") or []
+    education = candidate.get("education", []) or []
+    
+    exam_scores = candidate.get("skill_assessment_scores") or signals.get("skill_assessment_scores") or {}
+
+    # Check if this is the specific hackathon founding team AI engineer job description
+    is_hackathon_jd = "founding" in jd_full or "senior ai engineer" in jd_full
+
+    # ── 0. HONEYPOT FILTER (CRITICAL) ──────────────────────────────
+    # Filter out candidates with 0 duration for any skill
+    if any(isinstance(s, dict) and s.get("duration_months") == 0 for s in skills):
+        return {
+            "score": 0.0,
+            "reasoning": "Honeypot Filter: invalid skill duration months (0 months)",
+            "matching_skills": [],
+            "signal_scores": {"career": 0.0, "skills": 0.0, "experience": 0.0, "behavioral": 0.0, "education": 0.0}
+        }
+
+    # ── 0. LOCATION GATEKEEPER ─────────────────────────────────────
+    if country and country not in ["india", "in"] and not willing_relocate:
+        return {
+            "score": 0.0,
+            "reasoning": "Location Filter: outside India and unwilling to relocate",
+            "matching_skills": [],
+            "signal_scores": {"career": 0.0, "skills": 0.0, "experience": 0.0, "behavioral": 0.0, "education": 0.0}
+        }
+
+    # ── 0. IRRELEVANT TITLE / KEYWORD STUFFER FILTER ───────────────
+    # If is_hackathon_jd or is_tech_jd, reject completely non-matching titles
+    has_bad_title = False
+    if any(bad in title for bad in BAD_TITLE_KEYWORDS):
+        has_bad_title = True
+
+    if (is_hackathon_jd or is_tech_jd) and has_bad_title:
+        return {
+            "score": 0.0,
+            "reasoning": f"Title Filter: irrelevant role '{title}'",
+            "matching_skills": [],
+            "signal_scores": {"career": 0.0, "skills": 0.0, "experience": 0.0, "behavioral": 0.0, "education": 0.0}
+        }
+
+    # ── 0. ZERO MATCHING SKILLS FILTER ─────────────────────────────
+    matching_skills = []
+    for s in skills:
+        s_name = (s.get("name") if isinstance(s, dict) else str(s)).lower()
+        if any(req in s_name or s_name in req for req in required_skills):
+            matching_skills.append(s)
+
+    if is_tech_jd and required_skills and not matching_skills:
+        return {
+            "score": 0.0,
+            "reasoning": "Skills Filter: matches zero required technical skills",
+            "matching_skills": [],
+            "signal_scores": {"career": 0.0, "skills": 0.0, "experience": 0.0, "behavioral": 0.0, "education": 0.0}
+        }
+
+    # ── 0. SERVICE-FIRM-ONLY DISQUALIFIER ──────────────────────────
+    total_jobs = len(career)
+    consulting_jobs_count = 0
+    product_jobs_count = 0
+    
+    for job in career:
+        comp = job.get("company", "").lower() if isinstance(job, dict) else ""
+        if any(cf in comp for cf in CONSULTING_FIRMS):
+            consulting_jobs_count += 1
+        if any(pc in comp for pc in PRODUCT_COMPANIES):
+            product_jobs_count += 1
+
+    if (is_hackathon_jd or is_tech_jd) and total_jobs > 0 and consulting_jobs_count == total_jobs:
+        return {
+            "score": 0.0,
+            "reasoning": "Service-Firm Filter: consulting firm experience only",
+            "matching_skills": [],
+            "signal_scores": {"career": 0.0, "skills": 0.0, "experience": 0.0, "behavioral": 0.0, "education": 0.0}
+        }
+
+    # ── 0. LANGCHAIN-ONLY / RECENT-ONLY AI FILTER ──────────────────
+    if is_hackathon_jd or is_tech_jd:
+        ai_skills_count = 0
+        langchain_only = True
+        total_ai_duration = 0
+        
+        for s in skills:
+            if isinstance(s, dict):
+                s_name = s.get("name", "").lower()
+                s_duration = s.get("duration_months", 0)
+                
+                is_ai = any(req in s_name for req in ["machine learning", "deep learning", "nlp", "llm", "transformers", "bert", "gpt", "fine-tuning", "rag", "pytorch", "tensorflow", "langchain", "openai"])
+                if is_ai:
+                    ai_skills_count += 1
+                    total_ai_duration = max(total_ai_duration, s_duration)
+                    if not any(lc in s_name for lc in ["langchain", "openai", "gpt"]):
+                        langchain_only = False
+
+        if ai_skills_count > 0 and langchain_only and total_ai_duration < 12:
+            return {
+                "score": 0.0,
+                "reasoning": "AI Filter: AI experience is under 12 months and consists only of LangChain/OpenAI calls",
+                "matching_skills": [],
+                "signal_scores": {"career": 0.0, "skills": 0.0, "experience": 0.0, "behavioral": 0.0, "education": 0.0}
+            }
+
+    # ── 1. Career Relevance (30%) ─────────────────────────────
     if not is_tech_jd:
-        # NON-TECH JD: word-level overlap between extracted JD title and candidate title
+        # NON-TECH JD: title word-level overlap
         jd_words = [w for w in jd_title.split() if len(w) >= 2]
         if jd_words:
             match_count = sum(1 for w in jd_words if w in title)
             title_match_ratio = match_count / len(jd_words)
         else:
-            # No JD title extracted and no tech keywords — compare JD text to candidate title
-            # Check how many of the candidate's title words appear in the full JD text
             candidate_title_words = [w for w in title.split() if len(w) >= 3]
             if candidate_title_words and jd_full:
                 match_count = sum(1 for w in candidate_title_words if w in jd_full)
                 title_match_ratio = match_count / len(candidate_title_words)
             else:
-                title_match_ratio = 0.0  # Cannot determine relevance — neutral/low
+                title_match_ratio = 0.0
 
         if title_match_ratio >= 1.0:
-            career_score = 1.0      # Exact match
+            career_score = 1.0
         elif title_match_ratio >= 0.5:
-            career_score = 0.85     # Partial match
+            career_score = 0.85
         elif title_match_ratio > 0:
-            career_score = 0.6      # Weak match
+            career_score = 0.6
         else:
-            career_score = 0.1      # No match — irrelevant candidate
+            career_score = 0.1
     else:
-        # TECH JD: Use previous logic with bad-title penalties and good-title bonuses
+        # TECH JD:
         career_score = 0.5
-        if any(bad in title for bad in BAD_TITLE_KEYWORDS):
-            has_bad_title = True
-            career_score -= 0.4  # Heavy penalty for completely irrelevant titles
+        if has_bad_title:
+            career_score -= 0.4
 
         good_title_words = ["engineer", "developer", "scientist", "researcher",
                             "architect", "lead", "principal", "ml", "ai", "data scientist", "data engineer", "data analyst"]
         if any(g in title for g in good_title_words):
             career_score += 0.2
 
-        # Career history analysis (only relevant for tech JDs)
-        total_months = sum(j.get("duration_months", 0) for j in career)
+        total_months = 0
         consulting_months = 0
         product_months = 0
 
         for job in career:
+            if not isinstance(job, dict):
+                continue
             company = (job.get("company") or "").lower()
             desc = (job.get("description") or "").lower()
-            duration = job.get("duration_months", 0)
+            duration = job.get("duration_months", 0) or 0
+            total_months += duration
 
             if any(c in company for c in CONSULTING_FIRMS):
                 consulting_months += duration
@@ -206,95 +320,113 @@ def score_candidate_full(candidate: dict, jd_req: dict) -> dict:
         if product_months > 24:
             career_score += 0.1
 
+        # Title chaser penalty
+        if len(career) >= 3 and total_months > 0:
+            avg_months = total_months / len(career)
+            if avg_months < 18:
+                career_score -= 0.15
+
     career_score = max(0.0, min(1.0, career_score))
 
-    # ── Signal 2: Skills Depth (25%) ─────────────────────────
-    skills = candidate.get("skills", []) or []
-    exam_scores = candidate.get("skill_assessment_scores", {}) or {}
-
+    # ── 2. Skills Depth (25%) ─────────────────────────────────
     relevant_skill_score = 0
-    total_relevant = 0
+    total_relevant = len(matching_skills)
 
-    for skill in skills:
-        name = (skill.get("name") if isinstance(skill, dict) else str(skill)).lower()
-        proficiency = skill.get("proficiency", "beginner") if isinstance(skill, dict) else "beginner"
-        endorsements = skill.get("endorsements", 0) if isinstance(skill, dict) else 0
-        duration = skill.get("duration_months", 0) if isinstance(skill, dict) else 0
+    for skill in matching_skills:
+        if isinstance(skill, dict):
+            name = skill.get("name", "")
+            proficiency = skill.get("proficiency", "beginner")
+            endorsements = skill.get("endorsements", 0)
+            duration = skill.get("duration_months", 0)
+        else:
+            name = str(skill)
+            proficiency = "beginner"
+            endorsements = 0
+            duration = 0
 
-        is_relevant = any(req in name or name in req for req in required_skills)
-        if not is_relevant:
-            continue
-
-        total_relevant += 1
         prof_score = {"beginner": 0.2, "intermediate": 0.5, "advanced": 0.8, "expert": 1.0}.get(proficiency, 0.3)
         endorse_bonus = min(endorsements / 50, 0.3)
         duration_bonus = min(duration / 48, 0.2)
-
-        skill_name_orig = skill.get("name", "") if isinstance(skill, dict) else str(skill)
-        exam_bonus = (exam_scores.get(skill_name_orig, 0) / 100 * 0.3)
+        exam_bonus = (exam_scores.get(name, 0) / 100 * 0.3) if exam_scores else 0.0
 
         relevant_skill_score += min(prof_score + endorse_bonus + duration_bonus + exam_bonus, 1.5)
 
     if total_relevant == 0:
-        skills_score = 0.05 if is_tech_jd else 0.5  # For non-tech, skills signal is neutral
+        skills_score = 0.05 if is_tech_jd else 0.5
     else:
         skills_score = min((relevant_skill_score / (total_relevant * 1.5)) * 0.7 + min(total_relevant / 10, 0.3), 1.0)
 
-    # ── Signal 3: Experience Years (15%) ─────────────────────
-    years = float(candidate.get("years_of_experience", 0) or 0)
-    # Score based on how close candidate's experience is to what JD asked for
-    target_exp = (min_exp + max_exp) / 2
-    if target_exp == 0:
-        exp_score = 0.8
+    # ── 3. Experience Fit (15%) ──────────────────────────────
+    if is_hackathon_jd:
+        # Target: 5 to 9 years (midpoint = 7.0)
+        if 5.0 <= years <= 9.0:
+            exp_score = 1.0
+        elif 4.0 <= years < 5.0:
+            exp_score = 0.8
+        elif 3.0 <= years < 4.0:
+            exp_score = 0.5
+        elif years < 3.0:
+            exp_score = 0.1
+        elif 9.0 < years <= 12.0:
+            exp_score = 0.8
+        else:
+            exp_score = 0.5
     else:
-        diff = abs(years - target_exp)
-        exp_score = max(0.1, 1.0 - (diff / max(target_exp, 5)) * 0.8)
+        target_exp = (min_exp + max_exp) / 2
+        if target_exp == 0:
+            exp_score = 0.8
+        else:
+            diff = abs(years - target_exp)
+            exp_score = max(0.1, 1.0 - (diff / max(target_exp, 5)) * 0.8)
 
-
-    # ── Signal 4: Behavioral (20%) ────────────────────────────
-    open_to_work = bool(candidate.get("open_to_work", False))
-    response_rate = float(candidate.get("recruiter_response_rate", 0) or 0)
-    github_score = float(candidate.get("github_activity_score", -1) or -1)
-    interview_rate = float(candidate.get("interview_completion_rate", 0) or 0)
-    notice_period = int(candidate.get("notice_period_days", 90) or 90)
-    saved_30d = int(candidate.get("saved_by_recruiters_30d", 0) or 0)
-
+    # ── 4. Behavioral Signals (20%) ──────────────────────────
     behavioral_score = 0.3
     if open_to_work:
         behavioral_score += 0.25
     behavioral_score += response_rate * 0.2
 
-    # Last active date
-    last_active = candidate.get("last_active_date", "2020-01-01")
+    last_active = candidate.get("last_active_date") or signals.get("last_active_date") or "2026-01-01"
     try:
-        last_date = datetime.strptime(str(last_active)[:10], "%Y-%m-%d").date()
-        days_inactive = (date(2026, 6, 7) - last_date).days
-        if days_inactive <= 30:
-            behavioral_score += 0.15
-        elif days_inactive <= 90:
-            behavioral_score += 0.08
-        elif days_inactive > 365:
-            behavioral_score -= 0.15
-    except:
+        if isinstance(last_active, str):
+            last_date = datetime.strptime(last_active[:10], "%Y-%m-%d").date()
+        elif isinstance(last_active, (date, datetime)):
+            last_date = last_active if isinstance(last_active, date) else last_active.date()
+        else:
+            last_date = None
+            
+        if last_date:
+            days_inactive = (date(2026, 6, 7) - last_date).days
+            if days_inactive <= 30:
+                behavioral_score += 0.15
+            elif days_inactive <= 90:
+                behavioral_score += 0.08
+            elif days_inactive > 365:
+                behavioral_score -= 0.15
+    except Exception:
         pass
 
     if github_score > 0:
         behavioral_score += (github_score / 100) * 0.1
     behavioral_score += interview_rate * 0.05
+    
     if notice_period <= 30:
         behavioral_score += 0.05
+    elif notice_period > 90:
+        behavioral_score -= 0.1
+        
     if saved_30d > 5:
         behavioral_score += 0.05
 
     behavioral_score = max(0.0, min(1.0, behavioral_score))
 
-    # ── Signal 5: Education (10%) ─────────────────────────────
-    education = candidate.get("education", []) or []
+    # ── 5. Education (10%) ───────────────────────────────────
     edu_score = 0.3
     for edu in education:
-        tier = edu.get("tier", "unknown") if isinstance(edu, dict) else "unknown"
-        field = (edu.get("field_of_study", "") if isinstance(edu, dict) else "").lower()
-        degree = (edu.get("degree", "") if isinstance(edu, dict) else "").lower()
+        if not isinstance(edu, dict):
+            continue
+        tier = edu.get("tier", "unknown")
+        field = edu.get("field_of_study", "").lower()
+        degree = edu.get("degree", "").lower()
 
         tier_s = {"tier_1": 1.0, "tier_2": 0.8, "tier_3": 0.6, "tier_4": 0.4}.get(tier, 0.3)
         field_bonus = 0.2 if any(f in field for f in ["computer", "software", "data", "ai", "math", "statistics"]) else 0
@@ -302,7 +434,7 @@ def score_candidate_full(candidate: dict, jd_req: dict) -> dict:
 
         edu_score = max(edu_score, min(tier_s + field_bonus + deg_bonus, 1.0))
 
-    # ── Final Score ───────────────────────────────────────────
+    # ── Weighted Sum ──────────────────────────────────────────
     final = (
         career_score * 0.30 +
         skills_score * 0.25 +
@@ -310,7 +442,7 @@ def score_candidate_full(candidate: dict, jd_req: dict) -> dict:
         behavioral_score * 0.20 +
         edu_score * 0.10
     )
-    
+
     if is_tech_jd:
         if has_bad_title:
             final = 0.0
@@ -320,75 +452,156 @@ def score_candidate_full(candidate: dict, jd_req: dict) -> dict:
         if has_bad_title:
             final = final * 0.15
 
-    # Build rich narrative reasoning
-    matching_skills = [
-        (s.get("name") if isinstance(s, dict) else str(s))
-        for s in skills
-        if any(req in (s.get("name") if isinstance(s, dict) else str(s)).lower() for req in required_skills)
-    ]
+    final_score = round(max(0.0, min(1.0, final)), 4)
 
-    # Build reasoning fragments
-    reasons = []
+    # ── Plain reasoning generation for hackathon, else bullet format ──
+    if is_hackathon_jd:
+        product_companies = []
+        consulting_companies = []
+        for job in career:
+            if not isinstance(job, dict):
+                continue
+            comp = job.get("company", "")
+            comp_lower = comp.lower()
+            if any(pc in comp_lower for pc in PRODUCT_COMPANIES) and comp not in product_companies:
+                product_companies.append(comp)
+            elif any(cf in comp_lower for cf in CONSULTING_FIRMS) and comp not in consulting_companies:
+                consulting_companies.append(comp)
 
-    # Career signal
-    if career_score >= 0.7:
-        reasons.append(f"strong career fit (title & history align well)")
-    elif career_score >= 0.5:
-        reasons.append(f"partial career fit (some relevant background)")
-    elif has_bad_title:
-        reasons.append(f"⚠️ title mismatch — role does not align with JD")
-    else:
-        reasons.append(f"limited career relevance")
+        expert_adv_skills = [
+            (s.get("name") if isinstance(s, dict) else str(s))
+            for s in skills
+            if (s.get("proficiency") if isinstance(s, dict) else "beginner") in ["expert", "advanced"]
+        ]
+        core_skills = [
+            s for s in expert_adv_skills
+            if s.lower() in [
+                "embeddings", "retrieval", "vector database", "pinecone", "weaviate", "milvus", "faiss",
+                "nlp", "machine learning", "deep learning", "llm", "transformers", "rag", "pytorch", "python"
+            ]
+        ]
 
-    # Skills signal
-    if matching_skills:
-        top_skills = ", ".join(matching_skills[:3])
-        if skills_score >= 0.7:
-            reasons.append(f"{len(matching_skills)} required skills matched at high proficiency ({top_skills})")
-        elif skills_score >= 0.4:
-            reasons.append(f"{len(matching_skills)} relevant skills found ({top_skills})")
+        edu_str = ""
+        for edu in education:
+            if not isinstance(edu, dict):
+                continue
+            if edu.get("tier") == "tier_1":
+                edu_str = f"a Tier-1 {edu.get('degree', 'degree')} graduate"
+                break
+            elif edu.get("tier") == "tier_2":
+                edu_str = f"a Tier-2 {edu.get('degree', 'degree')} graduate"
+                break
+
+        company_phrase = ""
+        if product_companies:
+            company_phrase = f" at product firms like {', '.join(product_companies[:2])}"
+        elif consulting_companies:
+            company_phrase = f" with strong technical tenure at {consulting_companies[0]}"
+
+        skills_phrase = ""
+        if core_skills:
+            skills_phrase = f" specializing in {', '.join(core_skills[:3])}"
+
+        sentence1 = f"{title.title()} with {years:.1f} years of experience{company_phrase},{skills_phrase}."
+
+        behavioral_notes = []
+        if open_to_work:
+            behavioral_notes.append("actively seeking new opportunities")
+        if response_rate > 0.7:
+            behavioral_notes.append(f"highly responsive ({int(response_rate*100)}% response rate)")
+        if github_score > 60:
+            behavioral_notes.append("strong developer activity on GitHub")
+        if edu_str:
+            behavioral_notes.append(edu_str)
+
+        if len(behavioral_notes) == 1:
+            behavioral_str = behavioral_notes[0]
+        elif len(behavioral_notes) == 2:
+            behavioral_str = f"{behavioral_notes[0]} and {behavioral_notes[1]}"
+        elif len(behavioral_notes) > 2:
+            behavioral_str = f"{', '.join(behavioral_notes[:-1])}, and {behavioral_notes[-1]}"
         else:
-            reasons.append(f"low skill depth on required areas")
+            behavioral_str = ""
+
+        concern_str = ""
+        if notice_period >= 90:
+            concern_str = f"Note: has a long {notice_period}-day notice period."
+        elif notice_period >= 60:
+            concern_str = f"Notice period is {notice_period} days, which is slightly long but manageable."
+
+        if behavioral_str and concern_str:
+            sentence2 = f"They are {behavioral_str}. {concern_str}"
+        elif behavioral_str:
+            sentence2 = f"They are {behavioral_str} and based in {location}."
+        elif concern_str:
+            sentence2 = f"Currently based in {location}. {concern_str}"
+        else:
+            sentence2 = f"Currently located in {location}."
+
+        reasoning = f"{sentence1} {sentence2}"
     else:
-        reasons.append("no matching skills detected for this JD")
+        # General bullet-based reasoning
+        matching_skills_names = [
+            (s.get("name") if isinstance(s, dict) else str(s))
+            for s in skills
+            if any(req in (s.get("name") if isinstance(s, dict) else str(s)).lower() for req in required_skills)
+        ]
+        reasons = []
+        if career_score >= 0.7:
+            reasons.append("strong career fit (title & history align well)")
+        elif career_score >= 0.5:
+            reasons.append("partial career fit (some relevant background)")
+        elif has_bad_title:
+            reasons.append("⚠️ title mismatch — role does not align with JD")
+        else:
+            reasons.append("limited career relevance")
 
-    # Experience signal
-    if exp_score >= 0.8:
-        reasons.append(f"{years:.1f} yrs experience closely matches JD target")
-    elif exp_score >= 0.5:
-        reasons.append(f"{years:.1f} yrs experience (moderate fit to JD requirements)")
-    else:
-        reasons.append(f"{years:.1f} yrs experience (over/under-qualified for JD target)")
+        if matching_skills_names:
+            top_skills = ", ".join(matching_skills_names[:3])
+            if skills_score >= 0.7:
+                reasons.append(f"{len(matching_skills_names)} required skills matched at high proficiency ({top_skills})")
+            elif skills_score >= 0.4:
+                reasons.append(f"{len(matching_skills_names)} relevant skills found ({top_skills})")
+            else:
+                reasons.append("low skill depth on required areas")
+        else:
+            reasons.append("no matching skills detected for this JD")
 
-    # Behavioral signal
-    behavioral_notes = []
-    if open_to_work:
-        behavioral_notes.append("actively open to work")
-    if response_rate >= 0.7:
-        behavioral_notes.append(f"{int(response_rate*100)}% recruiter response rate")
-    if exam_scores:
-        behavioral_notes.append("exam-verified skills")
-    if github_score > 50:
-        behavioral_notes.append("active GitHub contributor")
-    if behavioral_notes:
-        reasons.append(", ".join(behavioral_notes))
+        if exp_score >= 0.8:
+            reasons.append(f"{years:.1f} yrs experience closely matches JD target")
+        elif exp_score >= 0.5:
+            reasons.append(f"{years:.1f} yrs experience (moderate fit to JD requirements)")
+        else:
+            reasons.append(f"{years:.1f} yrs experience (over/under-qualified for JD target)")
 
-    # Education signal
-    for edu in education:
-        tier = edu.get("tier", "") if isinstance(edu, dict) else ""
-        if tier == "tier_1":
-            reasons.append("Tier-1 institution")
-            break
-        elif tier == "tier_2":
-            reasons.append("Tier-2 institution")
-            break
+        behavioral_notes = []
+        if open_to_work:
+            behavioral_notes.append("actively open to work")
+        if response_rate >= 0.7:
+            behavioral_notes.append(f"{int(response_rate*100)}% recruiter response rate")
+        if exam_scores:
+            behavioral_notes.append("exam-verified skills")
+        if github_score > 50:
+            behavioral_notes.append("active GitHub contributor")
+        if behavioral_notes:
+            reasons.append(", ".join(behavioral_notes))
 
-    reasoning = " · ".join(reasons)
+        for edu in education:
+            if isinstance(edu, dict):
+                t_str = edu.get("tier", "")
+                if t_str == "tier_1":
+                    reasons.append("Tier-1 institution")
+                    break
+                elif t_str == "tier_2":
+                    reasons.append("Tier-2 institution")
+                    break
+
+        reasoning = " · ".join(reasons)
 
     return {
-        "score": round(max(0.0, min(1.0, final)), 4),
+        "score": final_score,
         "reasoning": reasoning,
-        "matching_skills": matching_skills,
+        "matching_skills": [s.get("name") if isinstance(s, dict) else str(s) for s in matching_skills],
         "signal_scores": {
             "career": round(career_score, 3),
             "skills": round(skills_score, 3),

@@ -156,6 +156,7 @@ To ensure candidate lists contain high-signal matches, the engine applies immedi
 > **Tech JD Hard Gatekeepers:**
 > 1. **Bad Title Match**: If a candidate carries a bad title keyword (e.g., *HR Manager* applying for *ML Engineer*), their score is set directly to **`0.0`**.
 > 2. **Zero Matching Skills**: If a Tech JD has required skills and the candidate matches **0** of them, their score is set directly to **`0.0`**.
+> 3. **Honeypot Signature Trap**: If a candidate lists any skill with a duration of **`0` months**, the profile is flagged as a synthetic honeypot and the score is set directly to **`0.0`**.
 
 > [!CAUTION]
 > **Non-Tech JD Multiplicative Penalties:**
