@@ -30,6 +30,15 @@ For a deep dive into the weights, equations, and design decisions of our scoring
 
 ---
 
+## 🌐 Live Deployed URLs
+
+The application is fully deployed and production-ready:
+* **Frontend Client (Vercel)**: [https://skillsync-iota-roan.vercel.app/](https://skillsync-iota-roan.vercel.app/)
+* **Backend API (Render)**: [https://skillsync-x7m7.onrender.com](https://skillsync-x7m7.onrender.com)
+* **Database (Supabase PostgreSQL)**: Integrated using Supabase Connection Pooling (port `5432`/`6543`) for fast, concurrent IPv4-to-IPv6 transactional operations.
+
+---
+
 ## ✨ Core Features
 
 | Feature | Description |
