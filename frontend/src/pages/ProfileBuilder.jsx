@@ -66,7 +66,7 @@ export default function ProfileBuilder() {
       const res = await axios.get(`${API}/profile/jobseeker`, {
         headers: { Authorization: `Bearer ${token}` }
       })
-      if (res.data && res.data.headline) {
+      if (res.data && Object.keys(res.data).length > 0) {
         setProfile(prev => ({ ...prev, ...res.data }))
       }
     } catch (err) { }

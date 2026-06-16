@@ -115,9 +115,20 @@ def save_jobseeker_profile(
 
     completeness = calculate_completeness(data.dict())
 
+    # Clean and parse date_of_birth
+    profile_data = data.dict()
+    dob = profile_data.get("date_of_birth")
+    if dob == "":
+        profile_data["date_of_birth"] = None
+    elif isinstance(dob, str):
+        try:
+            profile_data["date_of_birth"] = datetime.strptime(dob, "%Y-%m-%d").date()
+        except ValueError:
+            profile_data["date_of_birth"] = None
+
     if profile:
         # Update existing
-        for key, value in data.dict().items():
+        for key, value in profile_data.items():
             if hasattr(profile, key):
                 setattr(profile, key, value)
         profile.profile_completeness_score = completeness
@@ -129,7 +140,7 @@ def save_jobseeker_profile(
             profile_completeness_score=completeness,
             signup_date=date.today(),
             last_active_date=date.today(),
-            **{k: v for k, v in data.dict().items() if hasattr(JobSeekerProfile, k)}
+            **{k: v for k, v in profile_data.items() if hasattr(JobSeekerProfile, k)}
         )
         db.add(profile)
 
