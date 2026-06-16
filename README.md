@@ -12,6 +12,7 @@
 ![TailwindCSS](https://img.shields.io/badge/Tailwind-3%2B-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
 ![Free AI Fallbacks](https://img.shields.io/badge/Free%20AI%20Fallbacks-Groq%20%2B%20OpenRouter-7C3AED?style=for-the-badge)
 ![License: MIT](https://img.shields.io/badge/License-MIT-4ecdc4?style=for-the-badge)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Visit%20Website-brightgreen?style=for-the-badge&logo=vercel&logoColor=white)](https://skillsync-iota-roan.vercel.app/)
 
 > ⚡ **5-Signal AI Scoring · Proctor-Hardened Exams · 100K Candidate Dataset · Recruiter Analytics**
 
