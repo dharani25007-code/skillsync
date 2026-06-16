@@ -116,26 +116,6 @@ export default function Landing() {
         </div>
       </div>
 
-      {/* ── Animated Stats ───────────────────────────────────── */}
-      <div className="relative">
-        <div className="max-w-4xl mx-auto px-6 -mt-8">
-          <div className="grid grid-cols-3 gap-4 md:gap-6">
-            {[
-              { number: `${(countUp.candidates / 1000).toFixed(0)}K+`, label: 'Candidate Profiles', icon: '👥', gradient: 'from-indigo-500 to-violet-500' },
-              { number: `${countUp.companies}+`, label: 'Companies Hiring', icon: '🏢', gradient: 'from-teal-500 to-emerald-500' },
-              { number: `${countUp.accuracy}%`, label: 'Match Accuracy', icon: '🎯', gradient: 'from-amber-500 to-orange-500' },
-            ].map((s, i) => (
-              <div key={i} className="card p-6 md:p-8 text-center glow-hover">
-                <div className="text-2xl md:text-3xl mb-2">{s.icon}</div>
-                <div className={`text-3xl md:text-4xl font-black bg-gradient-to-r ${s.gradient} bg-clip-text text-transparent mb-1`}>
-                  {s.number}
-                </div>
-                <div className="text-gray-500 dark:text-gray-400 font-medium text-sm">{s.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
 
       {/* ── Features Section ─────────────────────────────────── */}
       <div className="max-w-6xl mx-auto px-6 py-24">
