@@ -21,8 +21,9 @@ export default function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
+    const API = import.meta.env.VITE_API_URL || '${API}'
     try {
-      const res = await axios.post('http://127.0.0.1:8000/auth/register', form)
+      const res = await axios.post(`${API}/auth/register`, form)
       localStorage.setItem('token', res.data.access_token)
       localStorage.setItem('role', res.data.role)
       localStorage.setItem('name', res.data.name)
