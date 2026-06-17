@@ -730,6 +730,8 @@ async def rank_candidates(
 
         print(f"✅ Loading hackathon dataset from: {hackathon_file}")
         count = 0
+        valid_count = 0
+        top_candidates = []
 
         # ── JSONL format (rich candidate objects) ──────────────
         if hackathon_file.endswith(".jsonl"):
@@ -758,7 +760,13 @@ async def rank_candidates(
                         candidate.setdefault("skills", [])
 
                         result = score_candidate_full(candidate, jd_req)
-                        candidates_scored.append({**candidate, **result})
+                        score = result.get("score", 0.0)
+                        if score > 0.0:
+                            valid_count += 1
+                            top_candidates.append({**candidate, **result})
+                            # Keep only the top N candidates in memory
+                            top_candidates.sort(key=lambda x: (-x["score"], x["candidate_id"]))
+                            top_candidates = top_candidates[:req.top_n]
                         count += 1
                     except Exception as e:
                         continue
@@ -797,12 +805,20 @@ async def rank_candidates(
                             "skill_assessment_scores": {},
                         }
                         result = score_candidate_full(candidate, jd_req)
-                        candidates_scored.append({**candidate, **result})
+                        score = result.get("score", 0.0)
+                        if score > 0.0:
+                            valid_count += 1
+                            top_candidates.append({**candidate, **result})
+                            # Keep only the top N candidates in memory
+                            top_candidates.sort(key=lambda x: (-x["score"], x["candidate_id"]))
+                            top_candidates = top_candidates[:req.top_n]
                         count += 1
                     except Exception:
                         continue
 
-        print(f"✅ Scored {len(candidates_scored):,} hackathon candidates")
+        print(f"✅ Scored {count:,} hackathon candidates, {valid_count:,} matched")
+        candidates_scored = top_candidates
+        total_ranked_count = valid_count
 
     # ── Upload / Fallback ──────────────────────────────────────
     elif req.dataset_source == "upload":
@@ -823,7 +839,9 @@ async def rank_candidates(
         raise HTTPException(status_code=400, detail="Invalid dataset source")
 
     # Filter out candidates with 0.0 score (completely unrelated)
-    candidates_scored = [c for c in candidates_scored if c["score"] > 0.0]
+    if req.dataset_source != "hackathon":
+        candidates_scored = [c for c in candidates_scored if c["score"] > 0.0]
+        total_ranked_count = len(candidates_scored)
 
     if not candidates_scored:
         return {"message": "No candidates found", "results": [], "total_ranked": 0, "jd_requirements": jd_req}
@@ -848,8 +866,8 @@ async def rank_candidates(
         print(f"Save error: {e}")
 
     return {
-        "message": f"Ranked {len(candidates_scored):,} candidates!",
-        "total_ranked": len(candidates_scored),
+        "message": f"Ranked {total_ranked_count:,} candidates!",
+        "total_ranked": total_ranked_count,
         "results": top,
         "jd_requirements": jd_req
     }
