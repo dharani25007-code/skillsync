@@ -675,7 +675,7 @@ def get_mock_skills(title: str, num_skills: int):
 class RankRequest(BaseModel):
     jd_text: str
     dataset_source: str
-    top_n: Optional[int] = 20
+    top_n: Optional[int] = 50
 
 
 @router.post("/rank")
@@ -877,7 +877,7 @@ async def rank_candidates(
 async def rank_candidates_csv(
     file: UploadFile = File(...),
     jd_text: str = Form(...),
-    top_n: int = Form(20),
+    top_n: int = Form(50),
     user_id: int = Depends(get_current_user)
 ):
     # Check if this is a macOS metadata companion file

@@ -284,7 +284,7 @@ export default function RankCandidates() {
         const formData = new FormData()
         formData.append('file', file)
         formData.append('jd_text', jd)
-        formData.append('top_n', 20)
+        formData.append('top_n', 50)
         res = await axios.post(`${API}/ranking/rank_upload`, formData, {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -294,7 +294,7 @@ export default function RankCandidates() {
       } else {
         res = await axios.post(
           `${API}/ranking/rank`,
-          { jd_text: jd, dataset_source: datasetOption, top_n: 20 },
+          { jd_text: jd, dataset_source: datasetOption, top_n: 50 },
           { headers: { Authorization: `Bearer ${token}` } }
         )
       }

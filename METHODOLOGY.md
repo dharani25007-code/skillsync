@@ -183,8 +183,8 @@ Recruiters are provided full visibility into why the candidate was placed at the
 To handle the **100,000 candidate dataset (130 MB JSONL)** on resource-constrained environments (like Render's free tier, which restricts RAM to **512 MB**), SkillSync utilizes a streaming top-N collection engine instead of buffering all candidate matches in memory:
 
 * **Line-by-Line Parsing**: The engine opens the dataset file and streams candidates one-by-one using a standard Python file generator. The raw JSON-lines or CSV rows are parsed, scored, and discarded immediately.
-* **Top-N Selection Filter**: Instead of storing all 100,000 scored dictionaries in a list (which requires >1.2 GB of RAM), the server maintains a size-limited sorted list containing only the top $N$ candidates (default $N=20$).
-* **Constant Memory Space**: As each candidate is scored, it is checked against the current top 20 list. If it qualifies, it is inserted and the list is sliced back to 20 items. This bounds memory consumption to **under 5 MB**, completely eliminating Out-Of-Memory (OOM) crashes.
+* **Top-N Selection Filter**: Instead of storing all 100,000 scored dictionaries in a list (which requires >1.2 GB of RAM), the server maintains a size-limited sorted list containing only the top $N$ candidates (default $N=50$).
+* **Constant Memory Space**: As each candidate is scored, it is checked against the current top 50 list. If it qualifies, it is inserted and the list is sliced back to 50 items. This bounds memory consumption to **under 5 MB**, completely eliminating Out-Of-Memory (OOM) crashes.
 
 ---
 

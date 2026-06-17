@@ -48,7 +48,7 @@ The application is fully deployed and production-ready:
 | 🛡️ **Proctor-Hardened Exam** | Anti-cheat shield blocking right-clicks, text selections, copy/cut/paste, DevTools access, browser print/save shortcuts, and tab switching. |
 | 🔑 **Server-Side Verification** | Generates questions dynamically using Groq/OpenRouter and evaluates replies against an auto-purging server-side cache (`_exam_cache`). |
 | 📂 **Dual Dataset Support** | Query either the SQL-based live applicant pool or the massive **100K candidate dataset** (`sample_submission.csv` format). |
-| ⚡ **Top-20 Streaming Scorer** | Streams 100K candidates line-by-line and only retains the top 20 candidates in memory, dropping RAM usage from 1GB+ to under 5MB to prevent OOM errors on limited hostings. |
+| ⚡ **Top-50 Streaming Scorer** | Streams 100K candidates line-by-line and only retains the top 50 candidates in memory, dropping RAM usage from 1GB+ to under 5MB to prevent OOM errors on limited hostings. |
 | 🏢 **Recruiter Analytics** | Displays matching candidates with color-coded per-signal breakdown graphs and natural-language matching reasoning. |
 | 📊 **Dynamic CSV Exporter** | Generates standard-aligned output CSVs with 16 comprehensive columns, fully compliant with Redrob submission specifications. |
 | 💼 **Job Board & Tracker** | Recruiters can create, edit, or delete listings. Seekers can browse and track applications, indicating when they have "Applied". |
