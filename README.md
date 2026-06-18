@@ -218,7 +218,20 @@ SkillSync runs on a free-tier fallback architecture to avoid rate limit locks du
 
 ---
 
+## 🧰 Tech Stack
 
+| Dependency | Category | Role |
+|---|---|---|
+| **FastAPI** | Backend | Core REST API web framework & routers |
+| **React + Vite** | Frontend | Reactive view layer and building pipeline |
+| **Supabase (PostgreSQL)** | DB | Database storing jobs, applicants, users, and exams |
+| **SQLAlchemy** | ORM | Relational schema mapping and query operations |
+| **Tailwind CSS** | Styling | Modern, responsive glassmorphic interfaces |
+| **PyJWT** | Security | JSON Web Token user authorization security |
+| **Bcrypt** | Encryption | Secure password hashing algorithms |
+| **Pydantic** | Validation | Datatype mapping and API request parsing |
+
+---
 
 ## 🔒 Security & Proctoring Controls
 
