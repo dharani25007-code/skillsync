@@ -235,6 +235,7 @@ SkillSync runs on a free-tier fallback architecture to avoid rate limit locks du
 
 ## 🔒 Security & Proctoring Controls
 
+
 - **Secure JWT Authentication**: All sensitive routes, including profile lists (`/jobseeker/all`) and application management, are locked behind token validation.
 - **Server-Side Exam Cache**: Exam answers never hit the client-side bundle. They are stored inside an auto-purging (`_exam_cache`) dictionary on the server.
 - **Strict Proctor Shield**: 
