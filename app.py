@@ -126,13 +126,13 @@ body {
 with gr.Blocks(theme=gr.themes.Soft(), css=theme_css) as demo:
     gr.Markdown("# 🧠 SkillSync AI - Candidate Ranker & Scorer")
     gr.Markdown(
-        "Upload a candidate profiles dataset (`.jsonl` format) to evaluate candidates against the **Senior AI Engineer — Founding Team** role. "
+        "Upload a candidate profiles dataset (`.jsonl` or `.csv` format) to evaluate candidates against the **Senior AI Engineer — Founding Team** role. "
         "The algorithm uses a 5-Signal scoring model (Career, Skills Depth, Experience, Behavioral, and Education) and automatically filters out honeypot profiles."
     )
     
     with gr.Row():
         with gr.Column(scale=1):
-            file_input = gr.File(label="Upload candidates.jsonl file", file_types=[".jsonl"])
+            file_input = gr.File(label="Upload candidates.jsonl or candidates.csv file", file_types=[".jsonl", ".csv"])
             run_btn = gr.Button("🚀 Run 5-Signal Scorer", variant="primary")
             
         with gr.Column(scale=2):
