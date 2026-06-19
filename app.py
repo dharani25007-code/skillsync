@@ -17,6 +17,22 @@ def process_candidates(file_obj):
     except Exception as e:
         return None, None, f"❌ Error reading file: {str(e)}"
         
+    # Check if the file is empty
+    non_empty_lines = [l.strip() for l in lines if l.strip()]
+    if not non_empty_lines:
+        return None, None, "❌ The uploaded file is empty."
+        
+    # Check if the file appears to be a CSV submission template rather than candidate profiles JSONL
+    first_line = non_empty_lines[0]
+    if first_line.startswith("candidate_id,") or not (first_line.startswith("{") and first_line.endswith("}")):
+        return None, None, (
+            "❌ **Invalid File Format Detected**\n\n"
+            "The uploaded file is formatted as a CSV/submission template (detected header: `candidate_id,rank,score,reasoning`), "
+            "not a JSONL candidate profiles dataset.\n\n"
+            "💡 **Please upload a valid candidate profiles dataset** in JSONL format (where each line is a JSON object containing keys like "
+            "`skills`, `career_history`, `profile`, etc., like `backend/data/candidates.jsonl`)."
+        )
+        
     total_candidates = 0
     honeypots_detected = 0
     filtered_disqualified = 0
