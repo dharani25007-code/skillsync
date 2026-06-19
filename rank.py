@@ -39,6 +39,158 @@ def parse_date(date_str):
     except:
         return None
 
+def parse_csv_row_to_candidate(row):
+    # Standardize keys to lowercase for robust matching
+    norm_row = {k.strip().lower(): v for k, v in row.items() if k is not None}
+    
+    # We must have at least a candidate_id
+    candidate_id = row.get("candidate_id") or row.get("Candidate ID") or norm_row.get("candidate_id") or norm_row.get("id")
+    if not candidate_id:
+        return None
+        
+    c = {
+        "candidate_id": candidate_id,
+        "skills": [],
+        "career_history": [],
+        "education": [],
+        "profile": {},
+        "redrob_signals": {}
+    }
+    
+    # ── 1. Parse Skills ───────────────────────────────────────────
+    skills_raw = row.get("skills") or norm_row.get("skills")
+    if skills_raw:
+        skills_raw = skills_raw.strip()
+        if skills_raw.startswith("[") and skills_raw.endswith("]"):
+            try:
+                c["skills"] = json.loads(skills_raw)
+            except Exception:
+                pass
+        if not c["skills"]:
+            delimiter = ";" if ";" in skills_raw else ","
+            c["skills"] = [s.strip() for s in skills_raw.split(delimiter) if s.strip()]
+            
+    # ── 2. Parse Career History ───────────────────────────────────
+    career_raw = row.get("career_history") or norm_row.get("career_history") or norm_row.get("career")
+    if career_raw:
+        career_raw = career_raw.strip()
+        if career_raw.startswith("[") and career_raw.endswith("]"):
+            try:
+                c["career_history"] = json.loads(career_raw)
+            except Exception:
+                pass
+                
+    # ── 3. Parse Education ────────────────────────────────────────
+    edu_raw = row.get("education") or norm_row.get("education")
+    if edu_raw:
+        edu_raw = edu_raw.strip()
+        if edu_raw.startswith("[") and edu_raw.endswith("]"):
+            try:
+                c["education"] = json.loads(edu_raw)
+            except Exception:
+                pass
+                
+    # ── 4. Parse Profile ──────────────────────────────────────────
+    prof_raw = row.get("profile") or norm_row.get("profile")
+    if prof_raw:
+        prof_raw = prof_raw.strip()
+        if prof_raw.startswith("{") and prof_raw.endswith("}"):
+            try:
+                c["profile"] = json.loads(prof_raw)
+            except Exception:
+                pass
+    
+    if not c["profile"]:
+        title = row.get("current_title") or norm_row.get("current_title") or norm_row.get("title") or ""
+        yoe = row.get("years_of_experience") or norm_row.get("years_of_experience") or norm_row.get("yoe") or 0
+        loc = row.get("location") or norm_row.get("location") or ""
+        country = row.get("country") or norm_row.get("country") or ""
+        try:
+            yoe = float(yoe)
+        except ValueError:
+            yoe = 0.0
+            
+        c["profile"] = {
+            "current_title": title,
+            "years_of_experience": yoe,
+            "location": loc,
+            "country": country
+        }
+        
+    # ── 5. Parse Redrob Signals ───────────────────────────────────
+    sig_raw = row.get("redrob_signals") or norm_row.get("redrob_signals") or norm_row.get("signals")
+    if sig_raw:
+        sig_raw = sig_raw.strip()
+        if sig_raw.startswith("{") and sig_raw.endswith("}"):
+            try:
+                c["redrob_signals"] = json.loads(sig_raw)
+            except Exception:
+                pass
+                
+    open_to_work = row.get("open_to_work") or norm_row.get("open_to_work") or norm_row.get("open_to_work_flag")
+    if open_to_work is not None:
+        c["open_to_work"] = str(open_to_work).strip().lower() in ["true", "1", "yes"]
+        c["redrob_signals"]["open_to_work_flag"] = c["open_to_work"]
+        
+    willing = row.get("willing_to_relocate") or norm_row.get("willing_to_relocate")
+    if willing is not None:
+        c["willing_to_relocate"] = str(willing).strip().lower() in ["true", "1", "yes"]
+        c["redrob_signals"]["willing_to_relocate"] = c["willing_to_relocate"]
+        
+    notice = row.get("notice_period_days") or norm_row.get("notice_period_days") or norm_row.get("notice_period")
+    if notice is not None:
+        try:
+            c["redrob_signals"]["notice_period_days"] = int(notice)
+        except ValueError:
+            pass
+            
+    rr = row.get("recruiter_response_rate") or norm_row.get("recruiter_response_rate") or norm_row.get("response_rate")
+    if rr is not None:
+        try:
+            c["redrob_signals"]["recruiter_response_rate"] = float(rr)
+        except ValueError:
+            pass
+            
+    return c
+
+def load_candidates(file_path):
+    candidates = []
+    is_csv = False
+    
+    # Try reading the first line to detect format
+    with open(file_path, "r", encoding="utf-8") as f:
+        first_line = ""
+        for line in f:
+            if line.strip():
+                first_line = line.strip()
+                break
+                
+    if not first_line:
+        return [], False
+        
+    if not (first_line.startswith("{") and first_line.endswith("}")):
+        is_csv = True
+        
+    if is_csv:
+        with open(file_path, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                c = parse_csv_row_to_candidate(row)
+                if c:
+                    candidates.append(c)
+    else:
+        with open(file_path, "r", encoding="utf-8") as f:
+            for line in f:
+                if not line.strip():
+                    continue
+                try:
+                    c = json.loads(line)
+                    candidates.append(c)
+                except Exception:
+                    continue
+                    
+    return candidates, is_csv
+
 def score_candidate(c):
     # Normalize skills list (handles both list of dicts and list of strings)
     raw_skills = c.get("skills", []) or []
@@ -389,25 +541,28 @@ def main():
     parser.add_argument("--out", required=True, help="Path to output submission.csv file")
     args = parser.parse_args()
     
-    candidates_scored = []
-    
     print(f"Reading candidates from {args.candidates}...")
-    with open(args.candidates, "r", encoding="utf-8") as f:
-        for idx, line in enumerate(f):
-            if not line.strip():
-                continue
-            try:
-                c = json.loads(line)
-                score = score_candidate(c)
-                if score is not None and score > 0.0:
-                    candidates_scored.append({
-                        "candidate_id": c["candidate_id"],
-                        "score": score,
-                        "raw_candidate": c
-                    })
-            except Exception as e:
-                continue
-                
+    candidates, is_csv = load_candidates(args.candidates)
+    
+    # Check if the parsed candidates have any profile information
+    total_parsed_with_details = sum(1 for c in candidates if c.get("skills") or c.get("profile", {}).get("current_title"))
+    if len(candidates) > 0 and total_parsed_with_details == 0:
+        print("❌ Error: The uploaded file is a submission template, not a candidate profiles dataset.")
+        sys.exit(1)
+        
+    candidates_scored = []
+    for c in candidates:
+        try:
+            score = score_candidate(c)
+            if score is not None and score > 0.0:
+                candidates_scored.append({
+                    "candidate_id": c["candidate_id"],
+                    "score": score,
+                    "raw_candidate": c
+                })
+        except Exception as e:
+            continue
+            
     print(f"Scored {len(candidates_scored)} valid candidates (filtered out honeypots and disqualifiers).")
     
     # Sort by score desc, then candidate_id asc (tie-breaker)

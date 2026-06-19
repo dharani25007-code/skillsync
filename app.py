@@ -4,33 +4,30 @@ import pandas as pd
 import tempfile
 import os
 import csv
-from rank import score_candidate, generate_plain_reasoning
+from rank import score_candidate, generate_plain_reasoning, load_candidates
 
 def process_candidates(file_obj):
     if file_obj is None:
-        return None, None, "❌ Please upload a candidates.jsonl file."
+        return None, None, "❌ Please upload a candidates.jsonl or candidates.csv file."
     
-    # Read candidate lines
+    # Load candidates using the unified load_candidates function
     try:
-        with open(file_obj.name, "r", encoding="utf-8") as f:
-            lines = f.readlines()
+        candidates, is_csv = load_candidates(file_obj.name)
     except Exception as e:
         return None, None, f"❌ Error reading file: {str(e)}"
         
-    # Check if the file is empty
-    non_empty_lines = [l.strip() for l in lines if l.strip()]
-    if not non_empty_lines:
-        return None, None, "❌ The uploaded file is empty."
+    if not candidates:
+        return None, None, "❌ The uploaded file is empty or could not be parsed."
         
-    # Check if the file appears to be a CSV submission template rather than candidate profiles JSONL
-    first_line = non_empty_lines[0]
-    if first_line.startswith("candidate_id,") or not (first_line.startswith("{") and first_line.endswith("}")):
+    # Check if the parsed candidates have any profile information (e.g., skills or current title)
+    total_parsed_with_details = sum(1 for c in candidates if c.get("skills") or c.get("profile", {}).get("current_title"))
+    if total_parsed_with_details == 0:
         return None, None, (
-            "❌ **Invalid File Format Detected**\n\n"
-            "The uploaded file is formatted as a CSV/submission template (detected header: `candidate_id,rank,score,reasoning`), "
-            "not a JSONL candidate profiles dataset.\n\n"
-            "💡 **Please upload a valid candidate profiles dataset** in JSONL format (where each line is a JSON object containing keys like "
-            "`skills`, `career_history`, `profile`, etc., like `backend/data/candidates.jsonl`)."
+            "❌ **No Candidate Profile Details Found**\n\n"
+            "The uploaded file contains column headers (like `candidate_id`, `rank`, `score`, and `reasoning`), but it does not "
+            "contain candidate profile details (such as `skills`, `career_history`, `education`, or `experience`).\n\n"
+            "💡 To evaluate and score candidates, please upload a candidate profiles dataset (either in JSONL format, "
+            "or as a CSV containing resume fields)."
         )
         
     total_candidates = 0
@@ -38,12 +35,9 @@ def process_candidates(file_obj):
     filtered_disqualified = 0
     candidates_scored = []
     
-    for line in lines:
-        if not line.strip():
-            continue
+    for c in candidates:
         try:
             total_candidates += 1
-            c = json.loads(line)
             
             # Normalize skills list (handles both list of dicts and list of strings)
             raw_skills = c.get("skills", []) or []
