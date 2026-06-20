@@ -275,3 +275,15 @@ To ensure job seekers only interact with genuine opportunities and are protected
 > **Hackathon Sandbox Mode**: To allow friction-free testing by hackathon judges and evaluators who sign up using personal/disposable emails, these corporate verification blocks are documented as a strategic product roadmap/admin-toggleable feature rather than hard-blocking registration limits.
 
 ---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
+
+---
+
+<div align="center">
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:4ecdc4,100:0f1117&height=120&section=footer&cb=2"/>
+
+**Built by [Dharani Dharan M](https://github.com/dharani25007-code)**
+</div>
