@@ -276,14 +276,3 @@ To ensure job seekers only interact with genuine opportunities and are protected
 
 ---
 
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
-
----
-
-<div align="center">
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:4ecdc4,100:0f1117&height=120&section=footer&cb=2"/>
-
-**Built by [Dharani Dharan M](https://github.com/dharani25007-code)**
-</div>
