@@ -137,8 +137,10 @@ def score_candidate_full(candidate: dict, jd_req: dict) -> dict:
     prof = candidate.get("profile") or {}
     signals = candidate.get("redrob_signals") or {}
 
-    title = (candidate.get("current_title") or prof.get("current_title") or "").strip().lower()
-    years = float(candidate.get("years_of_experience") or prof.get("years_of_experience") or 0.0)
+    title_raw = candidate.get("current_title") or prof.get("current_title") or ""
+    title = title_raw.strip().lower()
+    yoe_val = candidate.get("years_of_experience") if candidate.get("years_of_experience") is not None else prof.get("years_of_experience")
+    years = float(yoe_val if yoe_val is not None else 0.0)
     open_to_work = bool(candidate.get("open_to_work") or signals.get("open_to_work_flag") or False)
     response_rate = float(candidate.get("recruiter_response_rate") or signals.get("recruiter_response_rate") or 0.5)
     github_score = float(candidate.get("github_activity_score") or signals.get("github_activity_score") or -1.0)
