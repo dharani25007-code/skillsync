@@ -214,14 +214,16 @@ def score_candidate(c):
     # ── 0. LOCATION GATEKEEPER ─────────────────────────────────────
     # Relocation from Tier-1 India welcome. Outside India: case-by-case, but no work visa sponsorship.
     # If country is not India AND they are not willing to relocate, set score to 0.0
-    country = c.get("profile", {}).get("country", "").strip().lower()
+    country_raw = c.get("country") or c.get("profile", {}).get("country") or ""
+    country = country_raw.strip().lower()
     willing_relocate = c.get("redrob_signals", {}).get("willing_to_relocate", False) or c.get("willing_to_relocate", False)
     if country and country not in ["india", "in"] and not willing_relocate:
         return None
 
     # ── 0. IRRELEVANT TITLE / KEYWORD STUFFER FILTER ───────────────
     # Reject plain-language keyword stuffers with completely non-matching current titles
-    current_title = c.get("profile", {}).get("current_title", "").strip().lower()
+    title_raw = c.get("current_title") or c.get("profile", {}).get("current_title") or ""
+    current_title = title_raw.strip().lower()
     bad_title_keywords = [
         "marketing manager", "sales executive", "hr manager", "human resources",
         "accountant", "graphic designer", "content writer", "operations manager",
@@ -356,7 +358,8 @@ def score_candidate(c):
 
     # ── 3. Experience Fit (15%) ────────────────────────────────────
     # Target range: 5 to 9 years (midpoint = 7.0)
-    yoe = float(c.get("profile", {}).get("years_of_experience", 0) or 0)
+    yoe_val = c.get("years_of_experience") if c.get("years_of_experience") is not None else c.get("profile", {}).get("years_of_experience")
+    yoe = float(yoe_val if yoe_val is not None else 0.0)
     if 5.0 <= yoe <= 9.0:
         exp_score = 1.0
     elif 4.0 <= yoe < 5.0:
@@ -438,9 +441,10 @@ def score_candidate(c):
 
 def generate_plain_reasoning(c, rank):
     prof = c.get("profile", {})
-    title = prof.get("current_title", "Engineer")
-    yoe = float(prof.get("years_of_experience", 0) or 0)
-    location = prof.get("location", "India")
+    title = c.get("current_title") or prof.get("current_title") or "Engineer"
+    yoe_val = c.get("years_of_experience") if c.get("years_of_experience") is not None else prof.get("years_of_experience")
+    yoe = float(yoe_val if yoe_val is not None else 0.0)
+    location = c.get("location") or prof.get("location") or "India"
     
     career = c.get("career_history", [])
     product_companies = []
