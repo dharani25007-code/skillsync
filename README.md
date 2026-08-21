@@ -1,8 +1,4 @@
-<div align="center">
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:0f1117,50:4ecdc4,100:0f1117&height=220&section=header&text=SkillSync%20AI&fontSize=55&fontColor=ffffff&fontAlignY=40&desc=AI-Powered%20Candidate%20Ranking%20and%20Proctoring%20Platform&descAlignY=60&descSize=20&animation=fadeIn&cb=2"/>
-</div>
 
-<div align="center">
     
 ![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.109%2B-009688?style=for-the-badge&logo=fastapi&logoColor=white)
