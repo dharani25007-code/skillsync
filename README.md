@@ -1,22 +1,4 @@
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:0f1117,50:4ecdc4,100:0f1117&height=220&section=header&text=SkillSync%20AI&fontSize=55&fontColor=ffffff&fontAlignY=40&desc=AI-Powered%20Candidate%20Ranking%20and%20Proctoring%20Platform&descAlignY=60&descSize=20&animation=fadeIn&cb=2"/>
-</div>
 
-
-<div align="center">
-    
-![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.109%2B-009688?style=for-the-badge&logo=fastapi&logoColor=white)
-![React](https://img.shields.io/badge/React-18%2B-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
-![Vite](https://img.shields.io/badge/Vite-5%2B-646CFF?style=for-the-badge&logo=vite&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15%2B-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
-![TailwindCSS](https://img.shields.io/badge/Tailwind-3%2B-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
-![Free AI Fallbacks](https://img.shields.io/badge/Free%20AI%20Fallbacks-Groq%20%2B%20OpenRouter-7C3AED?style=for-the-badge)
-![License: MIT](https://img.shields.io/badge/License-MIT-4ecdc4?style=for-the-badge)
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-Visit%20Website-brightgreen?style=for-the-badge&logo=vercel&logoColor=white)](https://skillsync-iota-roan.vercel.app/)
-
-> ⚡ **5-Signal AI Scoring · Proctor-Hardened Exams · 100K Candidate Dataset · Recruiter Analytics**
-
-</div>
 
 ---
 
